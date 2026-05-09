@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>HKC 5节点测试网状态报告</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+               background:#0a0e17; color:#e0e6f0; padding:20px; }
+        .header { text-align:center; padding:40px 0 20px; }
+        .header h1 { font-size:36px; color:#FFD700; letter-spacing:3px; }
+        .header .sub { color:#8892a4; font-size:14px; margin-top:8px; }
+        .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+                      max-width:1200px; margin:30px auto; }
+        .stat-card { background:#151b2b; border:1px solid #1e2a42; border-radius:12px;
+                     padding:24px; text-align:center; }
+        .stat-value { font-size:32px; font-weight:700; color:#FFD700; }
+        .stat-label { font-size:13px; color:#8892a4; margin-top:8px; }
+        .section { max-width:1200px; margin:30px auto; }
+        .section h2 { font-size:22px; color:#FFD700; margin-bottom:16px;
+                      border-bottom:1px solid #1e2a42; padding-bottom:12px; }
+        .nodes-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+                      gap:16px; }
+        .node-card { background:#151b2b; border:1px solid #1e2a42; border-radius:12px;
+                     padding:20px; }
+        .node-header { display:flex; justify-content:space-between; margin-bottom:12px; }
+        .node-id { font-weight:700; font-size:16px; color:#FFD700; }
+        .node-info div { margin:6px 0; font-size:14px; color:#b0b8c8; }
+        table { width:100%; border-collapse:collapse; background:#151b2b;
+                border-radius:12px; overflow:hidden; }
+        th { background:#1a2236; padding:14px; text-align:left;
+             font-size:13px; color:#FFD700; text-transform:uppercase; }
+        td { padding:12px 14px; border-top:1px solid #1e2a42; font-size:14px; }
+        .footer { text-align:center; padding:40px 0; color:#555; font-size:12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏆 HKC 5节点测试网</h1>
+        <div class="sub">Hongkun AI Chain v4.0.0 — 本地多进程测试网状态报告</div>
+        <div class="sub">生成时间: 2026-05-08 19:50:48</div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">5</div>
+            <div class="stat-label">网络节点</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#2ecc71">
+                5
+            </div>
+            <div class="stat-label">在线节点</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">
+                3
+            </div>
+            <div class="stat-label">最高区块</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#2ecc71">
+                4/4
+            </div>
+            <div class="stat-label">测试通过</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🌐 节点状态</h2>
+        <div class="nodes-grid">
+            <div class="node-card" style="border-left:4px solid #2ecc71">
+                <div class="node-header">
+                    <span class="node-id">Node-0</span>
+                    <span class="node-status" style="color:#2ecc71">
+                        🟢 在线
+                    </span>
+                </div>
+                <div class="node-info">
+                    <div>验证者: <strong>涌金_Alice</strong></div>
+                    <div>区块高度: <strong>3</strong></div>
+                    <div>P2P端口: 8001</div>
+                    <div>RPC端口: 8841</div>
+                </div>
+            </div>
+            <div class="node-card" style="border-left:4px solid #2ecc71">
+                <div class="node-header">
+                    <span class="node-id">Node-1</span>
+                    <span class="node-status" style="color:#2ecc71">
+                        🟢 在线
+                    </span>
+                </div>
+                <div class="node-info">
+                    <div>验证者: <strong>涌金_Bob</strong></div>
+                    <div>区块高度: <strong>0</strong></div>
+                    <div>P2P端口: 8002</div>
+                    <div>RPC端口: 8842</div>
+                </div>
+            </div>
+            <div class="node-card" style="border-left:4px solid #2ecc71">
+                <div class="node-header">
+                    <span class="node-id">Node-2</span>
+                    <span class="node-status" style="color:#2ecc71">
+                        🟢 在线
+                    </span>
+                </div>
+                <div class="node-info">
+                    <div>验证者: <strong>涌银_Carol</strong></div>
+                    <div>区块高度: <strong>0</strong></div>
+                    <div>P2P端口: 8003</div>
+                    <div>RPC端口: 8843</div>
+                </div>
+            </div>
+            <div class="node-card" style="border-left:4px solid #2ecc71">
+                <div class="node-header">
+                    <span class="node-id">Node-3</span>
+                    <span class="node-status" style="color:#2ecc71">
+                        🟢 在线
+                    </span>
+                </div>
+                <div class="node-info">
+                    <div>验证者: <strong>涌银_Dave</strong></div>
+                    <div>区块高度: <strong>0</strong></div>
+                    <div>P2P端口: 8004</div>
+                    <div>RPC端口: 8844</div>
+                </div>
+            </div>
+            <div class="node-card" style="border-left:4px solid #2ecc71">
+                <div class="node-header">
+                    <span class="node-id">Node-4</span>
+                    <span class="node-status" style="color:#2ecc71">
+                        🟢 在线
+                    </span>
+                </div>
+                <div class="node-info">
+                    <div>验证者: <strong>涌铜_Eve</strong></div>
+                    <div>区块高度: <strong>0</strong></div>
+                    <div>P2P端口: 8005</div>
+                    <div>RPC端口: 8845</div>
+                </div>
+            </div></div>
+    </div>
+
+    <div class="section">
+        <h2>💰 钱包余额</h2>
+        <table>
+            <tr><th>节点</th><th>钱包</th><th>地址</th><th>余额 (HKAIC)</th></tr>
+            
+                <tr>
+                    <td>Node-0</td>
+                    <td>Alice</td>
+                    <td style="font-family:monospace;font-size:12px">HKAIC_4HMQwaptcPGYUU...</td>
+                    <td style="text-align:right">999879.9970</td>
+                </tr>
+                <tr>
+                    <td>Node-0</td>
+                    <td>Bob</td>
+                    <td style="font-family:monospace;font-size:12px">HKAIC_4HMQwapzmsWXzZ...</td>
+                    <td style="text-align:right">500220.0000</td>
+                </tr>
+                <tr>
+                    <td>Node-0</td>
+                    <td>涌信用户</td>
+                    <td style="font-family:monospace;font-size:12px">HKAIC_4HMQwapkxRBDeM...</td>
+                    <td style="text-align:right">49899.9980</td>
+                </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>🧪 测试结果</h2>
+        <table>
+            <tr><th>测试项</th><th>结果</th></tr>
+            
+            <tr>
+                <td>P2P互联</td>
+                <td style="color:#2ecc71;font-weight:bold">✅ 通过</td>
+            </tr>
+            <tr>
+                <td>共识出块</td>
+                <td style="color:#2ecc71;font-weight:bold">✅ 通过</td>
+            </tr>
+            <tr>
+                <td>端到端交易</td>
+                <td style="color:#2ecc71;font-weight:bold">✅ 通过</td>
+            </tr>
+            <tr>
+                <td>涌信钱包</td>
+                <td style="color:#2ecc71;font-weight:bold">✅ 通过</td>
+            </tr>
+        </table>
+    </div>
+
+    
+
+    <div class="footer">
+        HKC v4.0.0 — Hongkun AI Chain 5节点本地测试网 | PoEI共识 | 涌知路由P2P
+    </div>
+</body>
+</html>

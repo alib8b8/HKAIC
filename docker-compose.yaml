@@ -1,0 +1,97 @@
+# Hongkun AI Chain — 5节点测试网 Docker Compose
+# 用法: docker-compose up -d
+# 查看: docker-compose logs -f
+# 停止: docker-compose down
+
+version: '3.8'
+
+x-hkc-common: &hkc-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+    - hkc-testnet
+
+services:
+  node-0:
+    <<: *hkc-common
+    container_name: hkc-node-0
+    command:
+      - "--node-id=0"
+      - "--p2p-port=8001"
+      - "--rpc-port=8841"
+      - "--seeds=8002,8003,8004,8005"
+      - "--validator=涌金_Alice"
+      - "--stake=10000"
+      - "--K-i=95"
+    ports:
+      - "8841:8841"
+      - "8001:8001"
+
+  node-1:
+    <<: *hkc-common
+    container_name: hkc-node-1
+    command:
+      - "--node-id=1"
+      - "--p2p-port=8001"
+      - "--rpc-port=8841"
+      - "--seeds=8001,8003,8004,8005"
+      - "--validator=涌金_Bob"
+      - "--stake=8000"
+      - "--K-i=80"
+    ports:
+      - "8842:8841"
+      - "8002:8001"
+
+  node-2:
+    <<: *hkc-common
+    container_name: hkc-node-2
+    command:
+      - "--node-id=2"
+      - "--p2p-port=8001"
+      - "--rpc-port=8841"
+      - "--seeds=8001,8002,8004,8005"
+      - "--validator=涌银_Carol"
+      - "--stake=6000"
+      - "--K-i=65"
+    ports:
+      - "8843:8841"
+      - "8003:8001"
+
+  node-3:
+    <<: *hkc-common
+    container_name: hkc-node-3
+    command:
+      - "--node-id=3"
+      - "--p2p-port=8001"
+      - "--rpc-port=8841"
+      - "--seeds=8001,8002,8003,8005"
+      - "--validator=涌银_Dave"
+      - "--stake=4000"
+      - "--K-i=45"
+    ports:
+      - "8844:8841"
+      - "8004:8001"
+
+  node-4:
+    <<: *hkc-common
+    container_name: hkc-node-4
+    command:
+      - "--node-id=4"
+      - "--p2p-port=8001"
+      - "--rpc-port=8841"
+      - "--seeds=8001,8002,8003,8004"
+      - "--validator=涌铜_Eve"
+      - "--stake=2000"
+      - "--K-i=25"
+    ports:
+      - "8845:8841"
+      - "8005:8001"
+
+networks:
+  hkc-testnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HKC 经济仿真图表</title>
+<style>
+/* ====== HKC全局样式 ====== */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #0A1628;
+    color: #E0E6ED;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+a { color: #FFD700; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 导航栏 */
+.hkc-nav {
+    background: #0D1B2A;
+    border-bottom: 2px solid #FFD700;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.hkc-nav .logo {
+    font-size: 22px; font-weight: 700;
+    color: #FFD700;
+    letter-spacing: 2px;
+}
+.hkc-nav .logo span { color: #E0E6ED; font-weight: 300; font-size: 14px; margin-left: 8px; }
+.hkc-nav .nav-links { display:flex; gap:16px; flex-wrap:wrap; }
+.hkc-nav .nav-links a {
+    color: #8899AA; font-size:13px; padding:4px 8px;
+    border-radius:4px; transition:all .2s;
+}
+.hkc-nav .nav-links a:hover, .hkc-nav .nav-links a.active {
+    color: #FFD700; background: rgba(255,215,0,.1);
+}
+
+/* 主容器 */
+.hkc-container { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+/* 页面标题 */
+.hkc-page-title {
+    font-size: 28px; font-weight: 700; color: #FFD700;
+    margin: 20px 0 8px;
+    display: flex; align-items: center; gap: 12px;
+}
+.hkc-page-title .icon { font-size: 32px; }
+.hkc-subtitle { color: #8899AA; font-size: 14px; margin-bottom: 24px; }
+
+/* 卡片 */
+.hkc-card {
+    background: #1B2838;
+    border: 1px solid #2A3F5F;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: border-color .2s;
+}
+.hkc-card:hover { border-color: #FFD700; }
+.hkc-card-title {
+    font-size: 16px; font-weight: 600;
+    color: #FFD700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+}
+.hkc-card-title .dot {
+    width:8px; height:8px; border-radius:50%;
+    background: #FFD700; display:inline-block;
+}
+
+/* 网格布局 */
+.hkc-grid { display:grid; gap:20px; }
+.hkc-grid-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.hkc-grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.hkc-grid-4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* 图表容器 */
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+}
+.chart-container canvas {
+    width: 100%; height: 100%;
+    display: block;
+}
+
+/* 统计数字 */
+.stat-box {
+    text-align: center; padding: 16px;
+}
+.stat-value {
+    font-size: 32px; font-weight: 700; color: #FFD700;
+}
+.stat-label {
+    font-size: 12px; color: #8899AA; margin-top: 4px;
+}
+
+/* 表格 */
+.hkc-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.hkc-table th {
+    background: #0D1B2A; color: #FFD700;
+    padding: 10px 12px; text-align: left; cursor: pointer;
+    user-select: none; white-space: nowrap;
+    border-bottom: 2px solid #2A3F5F;
+}
+.hkc-table th:hover { background: rgba(255,215,0,.1); }
+.hkc-table td {
+    padding: 8px 12px; border-bottom: 1px solid #2A3F5F;
+}
+.hkc-table tr:hover td { background: rgba(255,215,0,.03); }
+
+/* 徽章 */
+.badge {
+    display:inline-block; padding:2px 8px; border-radius:10px;
+    font-size:11px; font-weight:600;
+}
+.badge-gold   { background:rgba(255,215,0,.2); color:#FFD700; }
+.badge-green  { background:rgba(0,230,118,.15); color:#00E676; }
+.badge-red    { background:rgba(255,82,82,.15); color:#FF5252; }
+.badge-orange { background:rgba(255,152,0,.15); color:#FF9800; }
+.badge-cyan   { background:rgba(0,188,212,.15); color:#00BCD4; }
+
+/* Tooltip */
+.hkc-tooltip {
+    position:absolute; pointer-events:none;
+    background:rgba(13,27,42,.95); border:1px solid #FFD700;
+    border-radius:8px; padding:8px 12px;
+    font-size:12px; color:#E0E6ED;
+    z-index:1000; white-space:nowrap;
+    display:none;
+}
+
+/* 时间筛选 */
+.time-filter {
+    display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;
+}
+.time-filter button {
+    background:#0D1B2A; color:#8899AA;
+    border:1px solid #2A3F5F; padding:6px 14px;
+    border-radius:6px; cursor:pointer; font-size:12px;
+    transition:all .2s;
+}
+.time-filter button:hover, .time-filter button.active {
+    background:rgba(255,215,0,.15); color:#FFD700;
+    border-color:#FFD700;
+}
+
+/* 主题切换 */
+.theme-toggle {
+    background:none; border:1px solid #2A3F5F;
+    color:#8899AA; padding:6px 10px;
+    border-radius:6px; cursor:pointer; font-size:12px;
+}
+
+/* 亮色主题覆盖 */
+body.light {
+    background:#F0F2F5; color:#1A1A2E;
+}
+body.light .hkc-card { background:#FFFFFF; border-color:#D0D5DD; }
+body.light .hkc-nav { background:#FFFFFF; border-bottom-color:#FFD700; }
+body.light .hkc-table th { background:#F8F9FA; color:#333; }
+body.light .hkc-table td { border-bottom-color:#E5E7EB; }
+body.light .hkc-page-title { color:#0A1628; }
+body.light .hkc-card-title { color:#0A1628; }
+body.light .stat-value { color:#0A1628; }
+
+/* 页脚 */
+.hkc-footer {
+    text-align:center; padding:24px;
+    color:#8899AA; font-size:12px;
+    border-top:1px solid #2A3F5F;
+    margin-top:40px;
+}
+
+/* 动画 */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.animate-pulse { animation: pulse 2s infinite; }
+.animate-slide { animation: slideIn .5s ease-out; }
+
+/* 响应式 */
+@media(max-width:768px){
+    .hkc-container { padding:12px; }
+    .hkc-page-title { font-size:20px; }
+    .hkc-grid-2,.hkc-grid-3,.hkc-grid-4 { grid-template-columns:1fr; }
+    .stat-value { font-size:24px; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width:8px; }
+::-webkit-scrollbar-track { background:#0D1B2A; }
+::-webkit-scrollbar-thumb { background:#2A3F5F; border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:#FFD700; }
+
+
+</style>
+</head><body>
+<nav class="hkc-nav">
+    <div class="logo">HKC<span>v4.0.0 可视化</span></div>
+    <div class="nav-links"><a href="#consensus">共识仪表盘</a>
+<a href="#economy" class="active">经济图表</a>
+<a href="#bridge">跨链桥</a>
+<a href="#network">网络拓扑</a>
+<a href="#wallet">钱包面板</a>
+<a href="#guardian">守护大屏</a>
+<a href="#explorer">区块浏览器</a>
+</div>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+</nav><div class="hkc-container">
+
+    <div class="hkc-page-title"><span class="icon">📊</span> HKAIC 经济仿真图表</div>
+    <div class="hkc-subtitle">代币经济可视化 — 供应/通胀/质押/分布/Gas</div>
+
+    <div class="hkc-grid hkc-grid-4 animate-slide">
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">14.6M</div><div class="stat-label">流通量 HKAIC</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">4.8M</div><div class="stat-label">质押量</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">5.7%</div><div class="stat-label">当前APY</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">$0.91</div><div class="stat-label">HKAIC价格</div>
+        </div></div>
+    </div>
+
+    <div class="hkc-card">
+        <div class="hkc-card-title"><span class="dot"></span> 代币供应曲线</div>
+        <div class="chart-container" style="height:360px"><canvas id="supplyChart"></canvas></div>
+        <div class="time-filter" id="tf-supply">
+            <button data-range="30" class="active">30天</button>
+            <button data-range="90">90天</button>
+            <button data-range="365">1年</button>
+        </div>
+    </div>
+
+    <div class="hkc-grid hkc-grid-2">
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> 通胀/通缩指标</div>
+            <div class="chart-container" style="height:300px"><canvas id="inflationChart"></canvas></div>
+        </div>
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> 质押APY趋势</div>
+            <div class="chart-container" style="height:300px"><canvas id="apyChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="hkc-grid hkc-grid-2">
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> HKAIC持币分布</div>
+            <div class="chart-container" style="height:300px"><canvas id="distChart"></canvas></div>
+        </div>
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> Gas费趋势</div>
+            <div class="chart-container" style="height:300px"><canvas id="gasChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="hkc-grid hkc-grid-2">
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> 经济健康指数</div>
+            <div class="chart-container" style="height:280px"><canvas id="healthGauge"></canvas></div>
+        </div>
+        <div class="hkc-card">
+            <div class="hkc-card-title"><span class="dot"></span> 资产分布</div>
+            <div class="chart-container" style="height:280px"><canvas id="assetPie"></canvas></div>
+        </div>
+    </div>
+    
+</div>
+<footer class="hkc-footer">
+    Hongkun AI Chain v4.0.0 — PoEI涌智证明 · ETB涌信桥 · ATH自主信任<br>
+    报告生成时间: 2026-05-08 19:08:36 · 纯Python零依赖可视化
+</footer>
+<script>
+// ====== HKC通用JS工具 ======
+
+// 主题切换
+function toggleTheme() {
+    document.body.classList.toggle('light');
+    localStorage.setItem('hkc-theme', document.body.classList.contains('light') ? 'light' : 'dark');
+}
+(function() {
+    if (localStorage.getItem('hkc-theme') === 'light') document.body.classList.add('light');
+})();
+
+// 时间筛选
+function setupTimeFilter(containerId, callback) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            el.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            if (callback) callback(this.dataset.range);
+        });
+    });
+}
+
+// Canvas高清适配
+function initCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = Math.max(300, rect.height) * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = Math.max(300, rect.height) + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: Math.max(300, rect.height), canvas };
+}
+
+// 绘制柱状图
+function drawBarChart(canvasId, data, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', padding: { top:40, right:20, bottom:60, left:60 },
+        barColor: '#FFD700', barColors: null,
+        labelColor: '#8899AA', valueColor: '#E0E6ED',
+        gridColor: 'rgba(42,63,95,0.5)', showValues: true,
+        animate: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const p = opts.padding;
+    const cw = w - p.left - p.right;
+    const ch = h - p.top - p.bottom;
+    const maxVal = Math.max(...data.map(d => d.value), 1);
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 24);
+    }
+    // 网格线
+    ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 5; i++) {
+        const y = p.top + ch - (ch * i / 5);
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.left + cw, y); ctx.stroke();
+        ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText((maxVal * i / 5).toFixed(1), p.left - 8, y + 4);
+    }
+    // 柱子
+    const barW = Math.max(8, cw / data.length * 0.6);
+    const gap = cw / data.length;
+    data.forEach((d, i) => {
+        const x = p.left + gap * i + (gap - barW) / 2;
+        const barH = (d.value / maxVal) * ch;
+        const y = p.top + ch - barH;
+        const color = opts.barColors ? (opts.barColors[i] || opts.barColor) : (d.color || opts.barColor);
+        // 渐变
+        const grad = ctx.createLinearGradient(x, y, x, p.top + ch);
+        grad.addColorStop(0, color); grad.addColorStop(1, color + '44');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        const r = Math.min(4, barW / 4);
+        ctx.moveTo(x + r, y); ctx.lineTo(x + barW - r, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+        ctx.lineTo(x + barW, p.top + ch); ctx.lineTo(x, p.top + ch);
+        ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.fill();
+        // 值
+        if (opts.showValues) {
+            ctx.fillStyle = opts.valueColor; ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.value.toFixed(1), x + barW/2, y - 6);
+        }
+        // 标签
+        ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.save(); ctx.translate(x + barW/2, p.top + ch + 10);
+        const lbl = d.label || '';
+        if (lbl.length > 8) ctx.rotate(-0.4);
+        ctx.fillText(lbl, 0, 0); ctx.restore();
+    });
+}
+
+// 绘制折线图
+function drawLineChart(canvasId, datasets, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', padding: { top:40, right:20, bottom:40, left:60 },
+        lineColors: ['#FFD700','#00E676','#00BCD4','#FF9800','#FF5252'],
+        gridColor: 'rgba(42,63,95,0.5)', labelColor: '#8899AA',
+        fillArea: true, smooth: true, showDots: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const p = opts.padding;
+    const cw = w - p.left - p.right;
+    const ch = h - p.top - p.bottom;
+    // 收集全局范围
+    let allVals = [];
+    datasets.forEach(ds => allVals = allVals.concat(ds.values));
+    const maxVal = Math.max(...allVals, 1);
+    const minVal = Math.min(...allVals, 0);
+    const range = maxVal - minVal || 1;
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 24);
+    }
+    // 网格
+    ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 5; i++) {
+        const y = p.top + ch - (ch * i / 5);
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.left + cw, y); ctx.stroke();
+        ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText((minVal + range * i / 5).toFixed(1), p.left - 8, y + 4);
+    }
+    // X轴标签
+    const labels = datasets[0]?.labels || [];
+    const n = labels.length;
+    if (n > 0) {
+        ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(n / 10));
+        for (let i = 0; i < n; i += step) {
+            const x = p.left + (i / (n - 1 || 1)) * cw;
+            ctx.fillText(labels[i], x, p.top + ch + 20);
+        }
+    }
+    // 折线
+    datasets.forEach((ds, di) => {
+        const color = opts.lineColors[di % opts.lineColors.length];
+        const vals = ds.values;
+        const points = vals.map((v, i) => ({
+            x: p.left + (i / (vals.length - 1 || 1)) * cw,
+            y: p.top + ch - ((v - minVal) / range) * ch
+        }));
+        // 面积填充
+        if (opts.fillArea && points.length > 1) {
+            ctx.beginPath(); ctx.moveTo(points[0].x, p.top + ch);
+            points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+            ctx.lineTo(points[points.length-1].x, p.top + ch); ctx.closePath();
+            const grd = ctx.createLinearGradient(0, p.top, 0, p.top + ch);
+            grd.addColorStop(0, color + '33'); grd.addColorStop(1, color + '05');
+            ctx.fillStyle = grd; ctx.fill();
+        }
+        // 线条
+        if (points.length > 1) {
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+            if (opts.smooth && points.length > 2) {
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length - 1; i++) {
+                    const xc = (points[i].x + points[i+1].x) / 2;
+                    const yc = (points[i].y + points[i+1].y) / 2;
+                    ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                }
+                ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+            } else {
+                points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+            }
+            ctx.stroke();
+        }
+        // 点
+        if (opts.showDots) {
+            points.forEach(pt => {
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = color; ctx.fill();
+            });
+        }
+    });
+    // 图例
+    datasets.forEach((ds, i) => {
+        const x = p.left + i * 120;
+        const y = p.top - 12;
+        ctx.fillStyle = opts.lineColors[i % opts.lineColors.length];
+        ctx.fillRect(x, y - 6, 12, 3);
+        ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText(ds.name || '', x + 16, y);
+    });
+}
+
+// 绘制饼图/环形图
+function drawPieChart(canvasId, data, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', donut: true, innerRatio: 0.55,
+        colors: ['#FFD700','#00E676','#00BCD4','#FF9800','#FF5252','#9C27B0','#3F51B5','#E91E63'],
+        labelColor: '#E0E6ED', showLabels: true, showPercent: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.min(w, h) / 2 - 40;
+    const ir = opts.donut ? r * opts.innerRatio : 0;
+    const total = data.reduce((s, d) => s + d.value, 0) || 1;
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, cx, 24);
+    }
+    let angle = -Math.PI / 2;
+    data.forEach((d, i) => {
+        const sweep = (d.value / total) * Math.PI * 2;
+        const color = d.color || opts.colors[i % opts.colors.length];
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, angle, angle + sweep);
+        ctx.arc(cx, cy, ir, angle + sweep, angle, true);
+        ctx.closePath();
+        ctx.fillStyle = color; ctx.fill();
+        ctx.strokeStyle = '#0A1628'; ctx.lineWidth = 2; ctx.stroke();
+        // 标签引导线
+        if (opts.showLabels && sweep > 0.15) {
+            const mid = angle + sweep / 2;
+            const lx = cx + (r + 20) * Math.cos(mid);
+            const ly = cy + (r + 20) * Math.sin(mid);
+            const lx2 = cx + (r + 40) * Math.cos(mid);
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+            ctx.moveTo(cx + r * Math.cos(mid), cy + r * Math.sin(mid));
+            ctx.lineTo(lx, ly); ctx.lineTo(lx2, ly); ctx.stroke();
+            ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif';
+            ctx.textAlign = mid > Math.PI/2 && mid < Math.PI*1.5 ? 'right' : 'left';
+            const pct = ((d.value / total) * 100).toFixed(1) + '%';
+            ctx.fillText((d.label || '') + (opts.showPercent ? ' ' + pct : ''), lx2 + (ctx.textAlign==='left'?4:-4), ly + 4);
+        }
+        angle += sweep;
+    });
+    // 中心文字
+    if (opts.donut) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(total.toFixed(0), cx, cy - 6);
+        ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif';
+        ctx.fillText('总计', cx, cy + 14);
+    }
+}
+
+// 绘制仪表盘
+function drawGauge(canvasId, value, maxValue, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', startAngle: Math.PI * 0.8, endAngle: Math.PI * 0.2,
+        colors: ['#FF5252','#FF9800','#FFEB3B','#00E676','#FFD700'],
+        labelColor: '#E0E6ED', unit: '', size: 0.7
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2;
+    const cy = h * 0.55;
+    const r = Math.min(w, h) * opts.size / 2;
+    const ratio = Math.min(value / (maxValue || 1), 1);
+    const totalAngle = Math.PI * 1.4;
+    // 背景弧
+    ctx.beginPath(); ctx.arc(cx, cy, r, opts.startAngle, Math.PI * 2 + opts.endAngle);
+    ctx.strokeStyle = '#2A3F5F'; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+    // 渐变弧
+    const valAngle = opts.startAngle + totalAngle * ratio;
+    const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+    opts.colors.forEach((c, i) => grad.addColorStop(i / (opts.colors.length - 1), c));
+    ctx.beginPath(); ctx.arc(cx, cy, r, opts.startAngle, valAngle);
+    ctx.strokeStyle = grad; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+    // 数值
+    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(value.toFixed(0) + opts.unit, cx, cy);
+    // 标签
+    if (opts.title) {
+        ctx.fillStyle = '#8899AA'; ctx.font = '12px sans-serif';
+        ctx.fillText(opts.title, cx, cy + 30);
+    }
+    // 刻度
+    for (let i = 0; i <= 10; i++) {
+        const a = opts.startAngle + totalAngle * i / 10;
+        const x1 = cx + (r - 15) * Math.cos(a);
+        const y1 = cy + (r - 15) * Math.sin(a);
+        const x2 = cx + (r + 2) * Math.cos(a);
+        const y2 = cy + (r + 2) * Math.sin(a);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+        ctx.strokeStyle = '#8899AA'; ctx.lineWidth = 1; ctx.stroke();
+    }
+}
+
+// 绘制雷达图
+function drawRadarChart(canvasId, datasets, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', sides: 5, levels: 5,
+        colors: ['#FFD700','#00E676','#00BCD4'],
+        labels: [], maxVal: 100, gridColor: 'rgba(42,63,95,0.5)'
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2; const cy = h / 2;
+    const r = Math.min(w, h) / 2 - 50;
+    const n = opts.sides;
+    const step = Math.PI * 2 / n;
+    // 网格
+    for (let lv = 1; lv <= opts.levels; lv++) {
+        const lr = r * lv / opts.levels;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+            const a = -Math.PI/2 + step * i;
+            const x = cx + lr * Math.cos(a);
+            const y = cy + lr * Math.sin(a);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+    // 轴线 + 标签
+    for (let i = 0; i < n; i++) {
+        const a = -Math.PI/2 + step * i;
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5; ctx.stroke();
+        if (opts.labels[i]) {
+            ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(opts.labels[i], cx + (r + 20) * Math.cos(a), cy + (r + 20) * Math.sin(a));
+        }
+    }
+    // 数据
+    datasets.forEach((ds, di) => {
+        const color = opts.colors[di % opts.colors.length];
+        ctx.beginPath();
+        ds.values.forEach((v, i) => {
+            const a = -Math.PI/2 + step * i;
+            const vr = r * Math.min(v / opts.maxVal, 1);
+            const x = cx + vr * Math.cos(a);
+            const y = cy + vr * Math.sin(a);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = color + '33'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+        // 顶点
+        ds.values.forEach((v, i) => {
+            const a = -Math.PI/2 + step * i;
+            const vr = r * Math.min(v / opts.maxVal, 1);
+            ctx.beginPath(); ctx.arc(cx + vr * Math.cos(a), cy + vr * Math.sin(a), 3, 0, Math.PI*2);
+            ctx.fillStyle = color; ctx.fill();
+        });
+    });
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, cx, 20);
+    }
+}
+
+// 绘制热力图
+function drawHeatmap(canvasId, matrix, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', rowLabels: [], colLabels: [],
+        colorLow: '#0A1628', colorHigh: '#FFD700',
+        labelColor: '#8899AA'
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const rows = matrix.length;
+    const cols = matrix[0]?.length || 1;
+    const pL = 80, pT = 40, pR = 20, pB = 40;
+    const cw = (w - pL - pR) / cols;
+    const ch = (h - pT - pB) / rows;
+    let maxV = -Infinity, minV = Infinity;
+    matrix.forEach(row => row.forEach(v => { if(v>maxV)maxV=v; if(v<minV)minV=v; }));
+    const range = maxV - minV || 1;
+    // 绘制格子
+    matrix.forEach((row, ri) => {
+        row.forEach((v, ci) => {
+            const t = (v - minV) / range;
+            const r0 = parseInt(opts.colorLow.slice(1,3),16);
+            const g0 = parseInt(opts.colorLow.slice(3,5),16);
+            const b0 = parseInt(opts.colorLow.slice(5,7),16);
+            const r1 = parseInt(opts.colorHigh.slice(1,3),16);
+            const g1 = parseInt(opts.colorHigh.slice(3,5),16);
+            const b1 = parseInt(opts.colorHigh.slice(5,7),16);
+            const cr = Math.round(r0 + (r1-r0)*t);
+            const cg = Math.round(g0 + (g1-g0)*t);
+            const cb = Math.round(b0 + (b1-b0)*t);
+            ctx.fillStyle = 'rgb('+cr+','+cg+','+cb+')';
+            ctx.fillRect(pL + ci*cw, pT + ri*ch, cw-1, ch-1);
+        });
+    });
+    // 标签
+    ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif';
+    (opts.rowLabels||[]).forEach((l,i) => {
+        ctx.textAlign = 'right'; ctx.fillText(l, pL-4, pT + i*ch + ch/2 + 4);
+    });
+    (opts.colLabels||[]).forEach((l,i) => {
+        ctx.textAlign = 'center'; ctx.fillText(l, pL + i*cw + cw/2, pT - 6);
+    });
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 20);
+    }
+}
+
+// 导出PNG
+function exportPNG(canvasId, filename) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = filename || 'hkc-chart.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+
+// 表格排序
+function setupTableSort(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const headers = table.querySelectorAll('th');
+    headers.forEach((th, colIdx) => {
+        th.addEventListener('click', () => {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const asc = th.dataset.sort !== 'asc';
+            table.querySelectorAll('th').forEach(h => delete h.dataset.sort);
+            th.dataset.sort = asc ? 'asc' : 'desc';
+            rows.sort((a, b) => {
+                const aVal = a.children[colIdx]?.textContent || '';
+                const bVal = b.children[colIdx]?.textContent || '';
+                const aNum = parseFloat(aVal); const bNum = parseFloat(bVal);
+                if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+                return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+}
+
+// 窗口resize重绘
+let _resizeTimers = {};
+function onResizeRedraw(canvasId, drawFn, delay) {
+    window.addEventListener('resize', () => {
+        clearTimeout(_resizeTimers[canvasId]);
+        _resizeTimers[canvasId] = setTimeout(drawFn, delay || 200);
+    });
+}
+</script>
+<script>
+
+    drawLineChart('supplyChart', [
+        {name:'流通量', values: [5042987.0, 5219516.0, 5344469.0, 5489639.0, 5608986.0, 5760397.0, 5903683.0, 5960169.0, 6099449.0, 6218922.0, 6325672.0, 6474285.0, 6585737.0, 6681360.0, 6785415.0, 6881948.0, 6955071.0, 7022332.0, 7156864.0, 7230087.0, 7291180.0, 7379093.0, 7536076.0, 7664483.0, 7752482.0, 7835678.0, 7922175.0, 8048283.0, 8102969.0, 8182954.0, 8309203.0, 8444378.0, 8527276.0, 8662872.0, 8775375.0, 8880956.0, 8997337.0, 9145480.0, 9257427.0, 9356799.0, 9421268.0, 9528903.0, 9605612.0, 9665773.0, 9755911.0, 9840914.0, 9907211.0, 10062775.0, 10188984.0, 10286045.0, 10403734.0, 10503136.0, 10582190.0, 10660067.0, 10721320.0, 10814309.0, 10888391.0, 11015583.0, 11131933.0, 11262482.0, 11319242.0, 11401697.0, 11542216.0, 11634930.0, 11740635.0, 11866534.0, 11942345.0, 12088278.0, 12187718.0, 12265104.0, 12405066.0, 12463899.0, 12541228.0, 12701800.0, 12839799.0, 12964339.0, 13029717.0, 13137404.0, 13252698.0, 13362329.0, 13494582.0, 13570296.0, 13683891.0, 13802276.0, 13876976.0, 13991053.0, 14099767.0, 14211923.0, 14314482.0, 14435777.0, 14491123.0, 14580048.0], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]},
+        {name:'质押量', values: [2996195.0, 3046713.0, 3032596.0, 3069991.0, 3083442.0, 3103064.0, 3140341.0, 3171553.0, 3201813.0, 3158993.0, 3177241.0, 3161772.0, 3144082.0, 3076532.0, 3096572.0, 3156526.0, 3175417.0, 3202807.0, 3226624.0, 3238020.0, 3283854.0, 3342118.0, 3329460.0, 3336604.0, 3401771.0, 3401604.0, 3454025.0, 3452525.0, 3459617.0, 3507374.0, 3549159.0, 3572548.0, 3574026.0, 3602769.0, 3633851.0, 3631900.0, 3629172.0, 3663901.0, 3698509.0, 3717699.0, 3734568.0, 3753601.0, 3769971.0, 3764475.0, 3824458.0, 3874547.0, 3901656.0, 3934264.0, 3949767.0, 3965090.0, 3972553.0, 4010153.0, 4066241.0, 4078054.0, 4071567.0, 4062995.0, 4094665.0, 4147606.0, 4144493.0, 4149796.0, 4161567.0, 4208579.0, 4186780.0, 4228151.0, 4258531.0, 4215747.0, 4193442.0, 4171716.0, 4198189.0, 4248759.0, 4262172.0, 4271174.0, 4329768.0, 4326922.0, 4329110.0, 4325241.0, 4268402.0, 4252502.0, 4268862.0, 4348261.0, 4351322.0, 4344425.0, 4411464.0, 4405596.0, 4414096.0, 4498569.0, 4537799.0, 4582268.0, 4639521.0, 4705845.0, 4772254.0, 4773116.0], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]},
+        {name:'销毁量', values: [6732.0, 21953.0, 35532.0, 48819.0, 69665.0, 86826.0, 104770.0, 122056.0, 141163.0, 156783.0, 173457.0, 196211.0, 215693.0, 237437.0, 257243.0, 275498.0, 300435.0, 309135.0, 321181.0, 338698.0, 362337.0, 374531.0, 392676.0, 403087.0, 418072.0, 436845.0, 463648.0, 477226.0, 499932.0, 522844.0, 540712.0, 561613.0, 577883.0, 593345.0, 612952.0, 628102.0, 643932.0, 653165.0, 672316.0, 684507.0, 703949.0, 727178.0, 740713.0, 748425.0, 762036.0, 776063.0, 788763.0, 811871.0, 831171.0, 846472.0, 866877.0, 879491.0, 897299.0, 908760.0, 920917.0, 938102.0, 953490.0, 972316.0, 985142.0, 1009125.0, 1018393.0, 1046362.0, 1061184.0, 1072157.0, 1089475.0, 1096249.0, 1120418.0, 1133800.0, 1146654.0, 1172244.0, 1197403.0, 1212159.0, 1220778.0, 1242843.0, 1254292.0, 1268478.0, 1279858.0, 1294521.0, 1308718.0, 1324132.0, 1341138.0, 1360634.0, 1376948.0, 1392665.0, 1410302.0, 1421975.0, 1434031.0, 1455356.0, 1478495.0, 1493575.0, 1513111.0, 1532867.0], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]}
+    ], { title: 'HKAIC供应量变化', fillArea: true });
+
+    drawLineChart('inflationChart', [
+        {name:'净发行率(%)', values: [0.03, 0.2, 0.22, -0.24, 1.27, 0.41, 0.57, 1.17, 0.92, 0.73, 0.82, 0.51, -0.21, 1.09, 1.49, 1.2, 0.22, 0.44, 0.07, 1.02, 0.3, 0.28, -0.19, -0.48, 0.23, 0.44, 1.03, -0.07, 0.91, 0.89, -0.13, 0.24, 0.57, 0.53, 0.43, 1.03, 0.94, 0.36, 1.23, 1.49, -0.19, 0.3, -0.17, 0.66, 0.29, 0.95, 0.78, 0.43, 0.07, 1.25, 1.1, -0.17, 1.43, 0.09, 0.53, 0.18, -0.16, 0.83, -0.07, -0.2, 1.31, -0.21, -0.08, 0.04, 0.88, 0.83, 1.48, 1.48, 0.02, -0.13, 0.93, -0.24, 0.22, 1.39, 0.28, 0.92, 1.01, 1.47, 1.12, 0.85, 1.35, 1.47, 1.39, 1.09, -0.1, 0.49, 0.42, 1.36, -0.42, 0.59, 0.02, -0.17], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]}
+    ], { title: '月度通胀/通缩指标', lineColors: ['#FF9800'] });
+
+    drawLineChart('apyChart', [
+        {name:'APY(%)', values: [3.78, 3.83, 3.91, 3.95, 4.0, 4.06, 4.1, 4.1, 4.14, 4.24, 4.27, 4.36, 4.43, 4.54, 4.57, 4.55, 4.57, 4.57, 4.61, 4.63, 4.61, 4.59, 4.67, 4.72, 4.7, 4.73, 4.72, 4.77, 4.79, 4.77, 4.78, 4.81, 4.85, 4.87, 4.89, 4.93, 4.97, 4.99, 5.0, 5.02, 5.03, 5.05, 5.06, 5.09, 5.07, 5.05, 5.05, 5.08, 5.11, 5.12, 5.16, 5.16, 5.13, 5.15, 5.17, 5.21, 5.21, 5.2, 5.24, 5.28, 5.28, 5.27, 5.33, 5.32, 5.33, 5.4, 5.44, 5.5, 5.51, 5.49, 5.52, 5.53, 5.5, 5.55, 5.58, 5.62, 5.69, 5.73, 5.75, 5.71, 5.74, 5.77, 5.74, 5.78, 5.79, 5.75, 5.75, 5.74, 5.72, 5.7, 5.67, 5.69], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]}
+    ], { title: '质押年化收益', lineColors: ['#00E676'], fillArea: true });
+
+    drawBarChart('distChart', [{"label": "0-100", "value": 8500, "color": "#00BCD4"}, {"label": "100-1K", "value": 2800, "color": "#00BCD4"}, {"label": "1K-10K", "value": 900, "color": "#00BCD4"}, {"label": "10K-100K", "value": 200, "color": "#00BCD4"}, {"label": "100K-1M", "value": 45, "color": "#FFD700"}, {"label": "1M+", "value": 8, "color": "#FFD700"}], {
+        title: '持币地址数', showValues: true
+    });
+
+    drawLineChart('gasChart', [
+        {name:'Gas价格(Gwei)', values: [1.67, 1.27, 1.25, 2.73, 2.42, 1.32, 1.74, 1.72, 2.61, 1.36, 1.74, 1.3, 1.69, 1.94, 1.41, 1.84, 2.22, 1.66, 1.63, 1.62, 1.09, 2.16, 2.63, 2.24, 2.02, 1.16, 2.89, 2.71, 1.4, 1.13, 2.59, 2.08, 1.79, 1.7, 2.18, 1.52, 1.05, 1.0, 1.87, 2.61, 3.0, 1.83, 1.16, 2.12, 1.69, 1.62, 1.12, 2.41, 1.4, 1.65, 2.8, 2.18, 1.93, 2.47, 2.58, 1.86, 1.39, 1.75, 2.83, 1.05, 2.69, 2.12, 1.49, 1.15, 2.63, 2.23, 1.76, 2.72, 2.76, 2.58, 1.6, 1.43, 2.8, 2.2, 2.09, 1.78, 1.97, 2.28, 2.38, 2.94, 1.42, 1.24, 2.95, 1.92, 1.6, 1.38, 2.49, 2.19, 2.04, 2.08, 2.5, 1.78], labels: ["1", "5", "9", "13", "17", "21", "25", "29", "33", "37", "41", "45", "49", "53", "57", "61", "65", "69", "73", "77", "81", "85", "89", "93", "97", "101", "105", "109", "113", "117", "121", "125", "129", "133", "137", "141", "145", "149", "153", "157", "161", "165", "169", "173", "177", "181", "185", "189", "193", "197", "201", "205", "209", "213", "217", "221", "225", "229", "233", "237", "241", "245", "249", "253", "257", "261", "265", "269", "273", "277", "281", "285", "289", "293", "297", "301", "305", "309", "313", "317", "321", "325", "329", "333", "337", "341", "345", "349", "353", "357", "361", "365"]}
+    ], { title: '平均Gas价格', lineColors: ['#FF5252'] });
+
+    drawGauge('healthGauge', 28.5, 100, {
+        title: '经济健康指数', unit: '分'
+    });
+
+    drawPieChart('assetPie', [{"label": "流通中", "value": 9806932.0}, {"label": "质押中", "value": 4773116.0}, {"label": "已销毁", "value": 1532867.0}, {"label": "未释放", "value": 6419952.0}], {
+        title: 'HKAIC 2100万分配'
+    });
+    
+</script>
+</body></html>

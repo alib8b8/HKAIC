@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HKC 区块浏览器</title>
+<style>
+/* ====== HKC全局样式 ====== */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #0A1628;
+    color: #E0E6ED;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+a { color: #FFD700; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 导航栏 */
+.hkc-nav {
+    background: #0D1B2A;
+    border-bottom: 2px solid #FFD700;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.hkc-nav .logo {
+    font-size: 22px; font-weight: 700;
+    color: #FFD700;
+    letter-spacing: 2px;
+}
+.hkc-nav .logo span { color: #E0E6ED; font-weight: 300; font-size: 14px; margin-left: 8px; }
+.hkc-nav .nav-links { display:flex; gap:16px; flex-wrap:wrap; }
+.hkc-nav .nav-links a {
+    color: #8899AA; font-size:13px; padding:4px 8px;
+    border-radius:4px; transition:all .2s;
+}
+.hkc-nav .nav-links a:hover, .hkc-nav .nav-links a.active {
+    color: #FFD700; background: rgba(255,215,0,.1);
+}
+
+/* 主容器 */
+.hkc-container { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+/* 页面标题 */
+.hkc-page-title {
+    font-size: 28px; font-weight: 700; color: #FFD700;
+    margin: 20px 0 8px;
+    display: flex; align-items: center; gap: 12px;
+}
+.hkc-page-title .icon { font-size: 32px; }
+.hkc-subtitle { color: #8899AA; font-size: 14px; margin-bottom: 24px; }
+
+/* 卡片 */
+.hkc-card {
+    background: #1B2838;
+    border: 1px solid #2A3F5F;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: border-color .2s;
+}
+.hkc-card:hover { border-color: #FFD700; }
+.hkc-card-title {
+    font-size: 16px; font-weight: 600;
+    color: #FFD700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+}
+.hkc-card-title .dot {
+    width:8px; height:8px; border-radius:50%;
+    background: #FFD700; display:inline-block;
+}
+
+/* 网格布局 */
+.hkc-grid { display:grid; gap:20px; }
+.hkc-grid-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.hkc-grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.hkc-grid-4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* 图表容器 */
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+}
+.chart-container canvas {
+    width: 100%; height: 100%;
+    display: block;
+}
+
+/* 统计数字 */
+.stat-box {
+    text-align: center; padding: 16px;
+}
+.stat-value {
+    font-size: 32px; font-weight: 700; color: #FFD700;
+}
+.stat-label {
+    font-size: 12px; color: #8899AA; margin-top: 4px;
+}
+
+/* 表格 */
+.hkc-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.hkc-table th {
+    background: #0D1B2A; color: #FFD700;
+    padding: 10px 12px; text-align: left; cursor: pointer;
+    user-select: none; white-space: nowrap;
+    border-bottom: 2px solid #2A3F5F;
+}
+.hkc-table th:hover { background: rgba(255,215,0,.1); }
+.hkc-table td {
+    padding: 8px 12px; border-bottom: 1px solid #2A3F5F;
+}
+.hkc-table tr:hover td { background: rgba(255,215,0,.03); }
+
+/* 徽章 */
+.badge {
+    display:inline-block; padding:2px 8px; border-radius:10px;
+    font-size:11px; font-weight:600;
+}
+.badge-gold   { background:rgba(255,215,0,.2); color:#FFD700; }
+.badge-green  { background:rgba(0,230,118,.15); color:#00E676; }
+.badge-red    { background:rgba(255,82,82,.15); color:#FF5252; }
+.badge-orange { background:rgba(255,152,0,.15); color:#FF9800; }
+.badge-cyan   { background:rgba(0,188,212,.15); color:#00BCD4; }
+
+/* Tooltip */
+.hkc-tooltip {
+    position:absolute; pointer-events:none;
+    background:rgba(13,27,42,.95); border:1px solid #FFD700;
+    border-radius:8px; padding:8px 12px;
+    font-size:12px; color:#E0E6ED;
+    z-index:1000; white-space:nowrap;
+    display:none;
+}
+
+/* 时间筛选 */
+.time-filter {
+    display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;
+}
+.time-filter button {
+    background:#0D1B2A; color:#8899AA;
+    border:1px solid #2A3F5F; padding:6px 14px;
+    border-radius:6px; cursor:pointer; font-size:12px;
+    transition:all .2s;
+}
+.time-filter button:hover, .time-filter button.active {
+    background:rgba(255,215,0,.15); color:#FFD700;
+    border-color:#FFD700;
+}
+
+/* 主题切换 */
+.theme-toggle {
+    background:none; border:1px solid #2A3F5F;
+    color:#8899AA; padding:6px 10px;
+    border-radius:6px; cursor:pointer; font-size:12px;
+}
+
+/* 亮色主题覆盖 */
+body.light {
+    background:#F0F2F5; color:#1A1A2E;
+}
+body.light .hkc-card { background:#FFFFFF; border-color:#D0D5DD; }
+body.light .hkc-nav { background:#FFFFFF; border-bottom-color:#FFD700; }
+body.light .hkc-table th { background:#F8F9FA; color:#333; }
+body.light .hkc-table td { border-bottom-color:#E5E7EB; }
+body.light .hkc-page-title { color:#0A1628; }
+body.light .hkc-card-title { color:#0A1628; }
+body.light .stat-value { color:#0A1628; }
+
+/* 页脚 */
+.hkc-footer {
+    text-align:center; padding:24px;
+    color:#8899AA; font-size:12px;
+    border-top:1px solid #2A3F5F;
+    margin-top:40px;
+}
+
+/* 动画 */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes slideIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.animate-pulse { animation: pulse 2s infinite; }
+.animate-slide { animation: slideIn .5s ease-out; }
+
+/* 响应式 */
+@media(max-width:768px){
+    .hkc-container { padding:12px; }
+    .hkc-page-title { font-size:20px; }
+    .hkc-grid-2,.hkc-grid-3,.hkc-grid-4 { grid-template-columns:1fr; }
+    .stat-value { font-size:24px; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width:8px; }
+::-webkit-scrollbar-track { background:#0D1B2A; }
+::-webkit-scrollbar-thumb { background:#2A3F5F; border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:#FFD700; }
+
+
+</style>
+</head><body>
+<nav class="hkc-nav">
+    <div class="logo">HKC<span>v4.0.0 可视化</span></div>
+    <div class="nav-links"><a href="#consensus">共识仪表盘</a>
+<a href="#economy">经济图表</a>
+<a href="#bridge">跨链桥</a>
+<a href="#network">网络拓扑</a>
+<a href="#wallet">钱包面板</a>
+<a href="#guardian">守护大屏</a>
+<a href="#explorer" class="active">区块浏览器</a>
+</div>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+</nav><div class="hkc-container">
+
+    <div class="hkc-page-title"><span class="icon">🔍</span> 区块浏览器</div>
+    <div class="hkc-subtitle">Block Explorer — 区块/交易/地址 搜索与浏览</div>
+
+    <div class="hkc-card" style="margin-bottom:20px">
+        <div style="display:flex;gap:12px;align-items:center">
+            <input type="text" id="searchInput" placeholder="输入区块高度 / 交易哈希 / 地址..."
+                style="flex:1;padding:12px 16px;background:#0D1B2A;border:1px solid #2A3F5F;
+                border-radius:8px;color:#E0E6ED;font-size:14px;outline:none">
+            <button onclick="doSearch()" style="padding:12px 24px;background:#FFD700;color:#0A1628;
+                border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px">搜索</button>
+        </div>
+    </div>
+
+    <div class="hkc-grid hkc-grid-4 animate-slide">
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">20</div><div class="stat-label">最新区块</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">109</div><div class="stat-label">总交易数</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">0.5</div><div class="stat-label">TPS</div>
+        </div></div>
+        <div class="hkc-card"><div class="stat-box">
+            <div class="stat-value">12s</div><div class="stat-label">出块间隔</div>
+        </div></div>
+    </div>
+
+    <div class="hkc-card">
+        <div class="hkc-card-title"><span class="dot"></span> 最新区块</div>
+        <div style="overflow-x:auto">
+        <table class="hkc-table" id="blockTable">
+            <thead><tr><th>高度</th><th>区块哈希</th><th>出块者</th><th>E_i</th><th>交易数</th><th>Gas使用率</th><th>时间</th></tr></thead>
+            <tbody><tr style="cursor:pointer" onclick="showBlock(20)"><td style="color:#FFD700;font-weight:600">20</td><td style="font-family:monospace;font-size:11px">0x1c2d80e4bc5b24c8...</td><td>HKC-Node-06</td><td>496.8</td><td>8</td><td>97%</td><td>1700000000</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(19)"><td style="color:#FFD700;font-weight:600">19</td><td style="font-family:monospace;font-size:11px">0xd113dd5f62a50392...</td><td>HKC-Node-12</td><td>638.7</td><td>2</td><td>90%</td><td>1700000012</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(18)"><td style="color:#FFD700;font-weight:600">18</td><td style="font-family:monospace;font-size:11px">0x6f90bb0644b39446...</td><td>HKC-Node-14</td><td>944.9</td><td>8</td><td>54%</td><td>1700000024</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(17)"><td style="color:#FFD700;font-weight:600">17</td><td style="font-family:monospace;font-size:11px">0x2c39cb65edb50859...</td><td>HKC-Node-08</td><td>602.3</td><td>6</td><td>74%</td><td>1700000036</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(16)"><td style="color:#FFD700;font-weight:600">16</td><td style="font-family:monospace;font-size:11px">0x2e92d37262d83c67...</td><td>HKC-Node-09</td><td>1072.8</td><td>9</td><td>50%</td><td>1700000048</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(15)"><td style="color:#FFD700;font-weight:600">15</td><td style="font-family:monospace;font-size:11px">0xd3a375d73cc1643c...</td><td>HKC-Node-17</td><td>370.9</td><td>4</td><td>37%</td><td>1700000060</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(14)"><td style="color:#FFD700;font-weight:600">14</td><td style="font-family:monospace;font-size:11px">0xdcac999b671e42b7...</td><td>HKC-Node-17</td><td>904.7</td><td>6</td><td>76%</td><td>1700000072</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(13)"><td style="color:#FFD700;font-weight:600">13</td><td style="font-family:monospace;font-size:11px">0xcfb3ec505718eb60...</td><td>HKC-Node-15</td><td>1182.8</td><td>9</td><td>90%</td><td>1700000084</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(12)"><td style="color:#FFD700;font-weight:600">12</td><td style="font-family:monospace;font-size:11px">0x3710cdd61f5bf069...</td><td>HKC-Node-14</td><td>975.4</td><td>8</td><td>61%</td><td>1700000096</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(11)"><td style="color:#FFD700;font-weight:600">11</td><td style="font-family:monospace;font-size:11px">0x39efe297cbdd0cec...</td><td>HKC-Node-04</td><td>698.5</td><td>2</td><td>93%</td><td>1700000108</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(10)"><td style="color:#FFD700;font-weight:600">10</td><td style="font-family:monospace;font-size:11px">0x41d72c182b3a5d00...</td><td>HKC-Node-15</td><td>1190.4</td><td>1</td><td>26%</td><td>1700000120</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(9)"><td style="color:#FFD700;font-weight:600">9</td><td style="font-family:monospace;font-size:11px">0x2d2431a60f8756d5...</td><td>HKC-Node-14</td><td>1019.4</td><td>3</td><td>92%</td><td>1700000132</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(8)"><td style="color:#FFD700;font-weight:600">8</td><td style="font-family:monospace;font-size:11px">0xbd8f947dafe59259...</td><td>HKC-Node-06</td><td>961.7</td><td>4</td><td>49%</td><td>1700000144</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(7)"><td style="color:#FFD700;font-weight:600">7</td><td style="font-family:monospace;font-size:11px">0x838b0f55e4c592ef...</td><td>HKC-Node-20</td><td>258.6</td><td>9</td><td>58%</td><td>1700000156</td></tr>
+<tr style="cursor:pointer" onclick="showBlock(6)"><td style="color:#FFD700;font-weight:600">6</td><td style="font-family:monospace;font-size:11px">0x9eb198adecc675f7...</td><td>HKC-Node-03</td><td>907.7</td><td>6</td><td>64%</td><td>1700000168</td></tr>
+</tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="hkc-card" id="blockDetail" style="display:none">
+        <div class="hkc-card-title"><span class="dot"></span> 区块详情</div>
+        <div id="blockDetailContent"></div>
+    </div>
+
+    <div class="hkc-card">
+        <div class="hkc-card-title"><span class="dot"></span> 活跃地址</div>
+        <div style="overflow-x:auto">
+        <table class="hkc-table" id="addrTable">
+            <thead><tr><th>地址</th><th>余额</th><th>交易数</th><th>信用分</th><th>E_i</th></tr></thead>
+            <tbody><tr><td style="font-family:monospace;font-size:11px">0x0de4bf8e...e8b0</td><td>34177.14 HKAIC</td><td>149</td><td><span class="badge badge-green">745</span></td><td>332.6</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0xae2f402b...21c1</td><td>95083.61 HKAIC</td><td>109</td><td><span class="badge badge-green">662</span></td><td>194.9</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0xc0152f12...26df</td><td>42357.9 HKAIC</td><td>106</td><td><span class="badge badge-orange">302</span></td><td>587.5</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0x89eab022...2190</td><td>72804.0 HKAIC</td><td>76</td><td><span class="badge badge-green">680</span></td><td>674.5</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0x0526912b...198f</td><td>1625.33 HKAIC</td><td>11</td><td><span class="badge badge-green">609</span></td><td>528.6</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0x6a938398...ef90</td><td>12624.97 HKAIC</td><td>38</td><td><span class="badge badge-orange">358</span></td><td>212.0</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0xd97d9f33...e975</td><td>57935.19 HKAIC</td><td>98</td><td><span class="badge badge-gold">935</span></td><td>550.7</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0x581624a1...1342</td><td>21445.62 HKAIC</td><td>70</td><td><span class="badge badge-green">702</span></td><td>507.3</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0x7e85a895...aef2</td><td>14037.52 HKAIC</td><td>107</td><td><span class="badge badge-orange">450</span></td><td>432.9</td></tr>
+<tr><td style="font-family:monospace;font-size:11px">0xdda74b09...c504</td><td>89335.1 HKAIC</td><td>134</td><td><span class="badge badge-orange">342</span></td><td>523.0</td></tr>
+</tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="hkc-card">
+        <div class="hkc-card-title"><span class="dot"></span> 出块者涌现分数分布</div>
+        <div class="chart-container" style="height:280px"><canvas id="proposerChart"></canvas></div>
+    </div>
+    
+</div>
+<footer class="hkc-footer">
+    Hongkun AI Chain v4.0.0 — PoEI涌智证明 · ETB涌信桥 · ATH自主信任<br>
+    报告生成时间: 2026-05-08 19:08:36 · 纯Python零依赖可视化
+</footer>
+<script>
+// ====== HKC通用JS工具 ======
+
+// 主题切换
+function toggleTheme() {
+    document.body.classList.toggle('light');
+    localStorage.setItem('hkc-theme', document.body.classList.contains('light') ? 'light' : 'dark');
+}
+(function() {
+    if (localStorage.getItem('hkc-theme') === 'light') document.body.classList.add('light');
+})();
+
+// 时间筛选
+function setupTimeFilter(containerId, callback) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            el.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            if (callback) callback(this.dataset.range);
+        });
+    });
+}
+
+// Canvas高清适配
+function initCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = Math.max(300, rect.height) * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = Math.max(300, rect.height) + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: Math.max(300, rect.height), canvas };
+}
+
+// 绘制柱状图
+function drawBarChart(canvasId, data, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', padding: { top:40, right:20, bottom:60, left:60 },
+        barColor: '#FFD700', barColors: null,
+        labelColor: '#8899AA', valueColor: '#E0E6ED',
+        gridColor: 'rgba(42,63,95,0.5)', showValues: true,
+        animate: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const p = opts.padding;
+    const cw = w - p.left - p.right;
+    const ch = h - p.top - p.bottom;
+    const maxVal = Math.max(...data.map(d => d.value), 1);
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 24);
+    }
+    // 网格线
+    ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 5; i++) {
+        const y = p.top + ch - (ch * i / 5);
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.left + cw, y); ctx.stroke();
+        ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText((maxVal * i / 5).toFixed(1), p.left - 8, y + 4);
+    }
+    // 柱子
+    const barW = Math.max(8, cw / data.length * 0.6);
+    const gap = cw / data.length;
+    data.forEach((d, i) => {
+        const x = p.left + gap * i + (gap - barW) / 2;
+        const barH = (d.value / maxVal) * ch;
+        const y = p.top + ch - barH;
+        const color = opts.barColors ? (opts.barColors[i] || opts.barColor) : (d.color || opts.barColor);
+        // 渐变
+        const grad = ctx.createLinearGradient(x, y, x, p.top + ch);
+        grad.addColorStop(0, color); grad.addColorStop(1, color + '44');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        const r = Math.min(4, barW / 4);
+        ctx.moveTo(x + r, y); ctx.lineTo(x + barW - r, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+        ctx.lineTo(x + barW, p.top + ch); ctx.lineTo(x, p.top + ch);
+        ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.fill();
+        // 值
+        if (opts.showValues) {
+            ctx.fillStyle = opts.valueColor; ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.value.toFixed(1), x + barW/2, y - 6);
+        }
+        // 标签
+        ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.save(); ctx.translate(x + barW/2, p.top + ch + 10);
+        const lbl = d.label || '';
+        if (lbl.length > 8) ctx.rotate(-0.4);
+        ctx.fillText(lbl, 0, 0); ctx.restore();
+    });
+}
+
+// 绘制折线图
+function drawLineChart(canvasId, datasets, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', padding: { top:40, right:20, bottom:40, left:60 },
+        lineColors: ['#FFD700','#00E676','#00BCD4','#FF9800','#FF5252'],
+        gridColor: 'rgba(42,63,95,0.5)', labelColor: '#8899AA',
+        fillArea: true, smooth: true, showDots: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const p = opts.padding;
+    const cw = w - p.left - p.right;
+    const ch = h - p.top - p.bottom;
+    // 收集全局范围
+    let allVals = [];
+    datasets.forEach(ds => allVals = allVals.concat(ds.values));
+    const maxVal = Math.max(...allVals, 1);
+    const minVal = Math.min(...allVals, 0);
+    const range = maxVal - minVal || 1;
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 24);
+    }
+    // 网格
+    ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 5; i++) {
+        const y = p.top + ch - (ch * i / 5);
+        ctx.beginPath(); ctx.moveTo(p.left, y); ctx.lineTo(p.left + cw, y); ctx.stroke();
+        ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText((minVal + range * i / 5).toFixed(1), p.left - 8, y + 4);
+    }
+    // X轴标签
+    const labels = datasets[0]?.labels || [];
+    const n = labels.length;
+    if (n > 0) {
+        ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(n / 10));
+        for (let i = 0; i < n; i += step) {
+            const x = p.left + (i / (n - 1 || 1)) * cw;
+            ctx.fillText(labels[i], x, p.top + ch + 20);
+        }
+    }
+    // 折线
+    datasets.forEach((ds, di) => {
+        const color = opts.lineColors[di % opts.lineColors.length];
+        const vals = ds.values;
+        const points = vals.map((v, i) => ({
+            x: p.left + (i / (vals.length - 1 || 1)) * cw,
+            y: p.top + ch - ((v - minVal) / range) * ch
+        }));
+        // 面积填充
+        if (opts.fillArea && points.length > 1) {
+            ctx.beginPath(); ctx.moveTo(points[0].x, p.top + ch);
+            points.forEach(pt => ctx.lineTo(pt.x, pt.y));
+            ctx.lineTo(points[points.length-1].x, p.top + ch); ctx.closePath();
+            const grd = ctx.createLinearGradient(0, p.top, 0, p.top + ch);
+            grd.addColorStop(0, color + '33'); grd.addColorStop(1, color + '05');
+            ctx.fillStyle = grd; ctx.fill();
+        }
+        // 线条
+        if (points.length > 1) {
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+            if (opts.smooth && points.length > 2) {
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length - 1; i++) {
+                    const xc = (points[i].x + points[i+1].x) / 2;
+                    const yc = (points[i].y + points[i+1].y) / 2;
+                    ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                }
+                ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+            } else {
+                points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+            }
+            ctx.stroke();
+        }
+        // 点
+        if (opts.showDots) {
+            points.forEach(pt => {
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = color; ctx.fill();
+            });
+        }
+    });
+    // 图例
+    datasets.forEach((ds, i) => {
+        const x = p.left + i * 120;
+        const y = p.top - 12;
+        ctx.fillStyle = opts.lineColors[i % opts.lineColors.length];
+        ctx.fillRect(x, y - 6, 12, 3);
+        ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText(ds.name || '', x + 16, y);
+    });
+}
+
+// 绘制饼图/环形图
+function drawPieChart(canvasId, data, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', donut: true, innerRatio: 0.55,
+        colors: ['#FFD700','#00E676','#00BCD4','#FF9800','#FF5252','#9C27B0','#3F51B5','#E91E63'],
+        labelColor: '#E0E6ED', showLabels: true, showPercent: true
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.min(w, h) / 2 - 40;
+    const ir = opts.donut ? r * opts.innerRatio : 0;
+    const total = data.reduce((s, d) => s + d.value, 0) || 1;
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, cx, 24);
+    }
+    let angle = -Math.PI / 2;
+    data.forEach((d, i) => {
+        const sweep = (d.value / total) * Math.PI * 2;
+        const color = d.color || opts.colors[i % opts.colors.length];
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, angle, angle + sweep);
+        ctx.arc(cx, cy, ir, angle + sweep, angle, true);
+        ctx.closePath();
+        ctx.fillStyle = color; ctx.fill();
+        ctx.strokeStyle = '#0A1628'; ctx.lineWidth = 2; ctx.stroke();
+        // 标签引导线
+        if (opts.showLabels && sweep > 0.15) {
+            const mid = angle + sweep / 2;
+            const lx = cx + (r + 20) * Math.cos(mid);
+            const ly = cy + (r + 20) * Math.sin(mid);
+            const lx2 = cx + (r + 40) * Math.cos(mid);
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+            ctx.moveTo(cx + r * Math.cos(mid), cy + r * Math.sin(mid));
+            ctx.lineTo(lx, ly); ctx.lineTo(lx2, ly); ctx.stroke();
+            ctx.fillStyle = opts.labelColor; ctx.font = '11px sans-serif';
+            ctx.textAlign = mid > Math.PI/2 && mid < Math.PI*1.5 ? 'right' : 'left';
+            const pct = ((d.value / total) * 100).toFixed(1) + '%';
+            ctx.fillText((d.label || '') + (opts.showPercent ? ' ' + pct : ''), lx2 + (ctx.textAlign==='left'?4:-4), ly + 4);
+        }
+        angle += sweep;
+    });
+    // 中心文字
+    if (opts.donut) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(total.toFixed(0), cx, cy - 6);
+        ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif';
+        ctx.fillText('总计', cx, cy + 14);
+    }
+}
+
+// 绘制仪表盘
+function drawGauge(canvasId, value, maxValue, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', startAngle: Math.PI * 0.8, endAngle: Math.PI * 0.2,
+        colors: ['#FF5252','#FF9800','#FFEB3B','#00E676','#FFD700'],
+        labelColor: '#E0E6ED', unit: '', size: 0.7
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2;
+    const cy = h * 0.55;
+    const r = Math.min(w, h) * opts.size / 2;
+    const ratio = Math.min(value / (maxValue || 1), 1);
+    const totalAngle = Math.PI * 1.4;
+    // 背景弧
+    ctx.beginPath(); ctx.arc(cx, cy, r, opts.startAngle, Math.PI * 2 + opts.endAngle);
+    ctx.strokeStyle = '#2A3F5F'; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+    // 渐变弧
+    const valAngle = opts.startAngle + totalAngle * ratio;
+    const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+    opts.colors.forEach((c, i) => grad.addColorStop(i / (opts.colors.length - 1), c));
+    ctx.beginPath(); ctx.arc(cx, cy, r, opts.startAngle, valAngle);
+    ctx.strokeStyle = grad; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+    // 数值
+    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(value.toFixed(0) + opts.unit, cx, cy);
+    // 标签
+    if (opts.title) {
+        ctx.fillStyle = '#8899AA'; ctx.font = '12px sans-serif';
+        ctx.fillText(opts.title, cx, cy + 30);
+    }
+    // 刻度
+    for (let i = 0; i <= 10; i++) {
+        const a = opts.startAngle + totalAngle * i / 10;
+        const x1 = cx + (r - 15) * Math.cos(a);
+        const y1 = cy + (r - 15) * Math.sin(a);
+        const x2 = cx + (r + 2) * Math.cos(a);
+        const y2 = cy + (r + 2) * Math.sin(a);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+        ctx.strokeStyle = '#8899AA'; ctx.lineWidth = 1; ctx.stroke();
+    }
+}
+
+// 绘制雷达图
+function drawRadarChart(canvasId, datasets, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', sides: 5, levels: 5,
+        colors: ['#FFD700','#00E676','#00BCD4'],
+        labels: [], maxVal: 100, gridColor: 'rgba(42,63,95,0.5)'
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2; const cy = h / 2;
+    const r = Math.min(w, h) / 2 - 50;
+    const n = opts.sides;
+    const step = Math.PI * 2 / n;
+    // 网格
+    for (let lv = 1; lv <= opts.levels; lv++) {
+        const lr = r * lv / opts.levels;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+            const a = -Math.PI/2 + step * i;
+            const x = cx + lr * Math.cos(a);
+            const y = cy + lr * Math.sin(a);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+    // 轴线 + 标签
+    for (let i = 0; i < n; i++) {
+        const a = -Math.PI/2 + step * i;
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        ctx.strokeStyle = opts.gridColor; ctx.lineWidth = 0.5; ctx.stroke();
+        if (opts.labels[i]) {
+            ctx.fillStyle = '#8899AA'; ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(opts.labels[i], cx + (r + 20) * Math.cos(a), cy + (r + 20) * Math.sin(a));
+        }
+    }
+    // 数据
+    datasets.forEach((ds, di) => {
+        const color = opts.colors[di % opts.colors.length];
+        ctx.beginPath();
+        ds.values.forEach((v, i) => {
+            const a = -Math.PI/2 + step * i;
+            const vr = r * Math.min(v / opts.maxVal, 1);
+            const x = cx + vr * Math.cos(a);
+            const y = cy + vr * Math.sin(a);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = color + '33'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+        // 顶点
+        ds.values.forEach((v, i) => {
+            const a = -Math.PI/2 + step * i;
+            const vr = r * Math.min(v / opts.maxVal, 1);
+            ctx.beginPath(); ctx.arc(cx + vr * Math.cos(a), cy + vr * Math.sin(a), 3, 0, Math.PI*2);
+            ctx.fillStyle = color; ctx.fill();
+        });
+    });
+    // 标题
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, cx, 20);
+    }
+}
+
+// 绘制热力图
+function drawHeatmap(canvasId, matrix, options) {
+    const c = initCanvas(canvasId);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const opts = Object.assign({
+        title: '', rowLabels: [], colLabels: [],
+        colorLow: '#0A1628', colorHigh: '#FFD700',
+        labelColor: '#8899AA'
+    }, options || {});
+    ctx.clearRect(0, 0, w, h);
+    const rows = matrix.length;
+    const cols = matrix[0]?.length || 1;
+    const pL = 80, pT = 40, pR = 20, pB = 40;
+    const cw = (w - pL - pR) / cols;
+    const ch = (h - pT - pB) / rows;
+    let maxV = -Infinity, minV = Infinity;
+    matrix.forEach(row => row.forEach(v => { if(v>maxV)maxV=v; if(v<minV)minV=v; }));
+    const range = maxV - minV || 1;
+    // 绘制格子
+    matrix.forEach((row, ri) => {
+        row.forEach((v, ci) => {
+            const t = (v - minV) / range;
+            const r0 = parseInt(opts.colorLow.slice(1,3),16);
+            const g0 = parseInt(opts.colorLow.slice(3,5),16);
+            const b0 = parseInt(opts.colorLow.slice(5,7),16);
+            const r1 = parseInt(opts.colorHigh.slice(1,3),16);
+            const g1 = parseInt(opts.colorHigh.slice(3,5),16);
+            const b1 = parseInt(opts.colorHigh.slice(5,7),16);
+            const cr = Math.round(r0 + (r1-r0)*t);
+            const cg = Math.round(g0 + (g1-g0)*t);
+            const cb = Math.round(b0 + (b1-b0)*t);
+            ctx.fillStyle = 'rgb('+cr+','+cg+','+cb+')';
+            ctx.fillRect(pL + ci*cw, pT + ri*ch, cw-1, ch-1);
+        });
+    });
+    // 标签
+    ctx.fillStyle = opts.labelColor; ctx.font = '10px sans-serif';
+    (opts.rowLabels||[]).forEach((l,i) => {
+        ctx.textAlign = 'right'; ctx.fillText(l, pL-4, pT + i*ch + ch/2 + 4);
+    });
+    (opts.colLabels||[]).forEach((l,i) => {
+        ctx.textAlign = 'center'; ctx.fillText(l, pL + i*cw + cw/2, pT - 6);
+    });
+    if (opts.title) {
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(opts.title, w/2, 20);
+    }
+}
+
+// 导出PNG
+function exportPNG(canvasId, filename) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = filename || 'hkc-chart.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+
+// 表格排序
+function setupTableSort(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const headers = table.querySelectorAll('th');
+    headers.forEach((th, colIdx) => {
+        th.addEventListener('click', () => {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const asc = th.dataset.sort !== 'asc';
+            table.querySelectorAll('th').forEach(h => delete h.dataset.sort);
+            th.dataset.sort = asc ? 'asc' : 'desc';
+            rows.sort((a, b) => {
+                const aVal = a.children[colIdx]?.textContent || '';
+                const bVal = b.children[colIdx]?.textContent || '';
+                const aNum = parseFloat(aVal); const bNum = parseFloat(bVal);
+                if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+                return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+}
+
+// 窗口resize重绘
+let _resizeTimers = {};
+function onResizeRedraw(canvasId, drawFn, delay) {
+    window.addEventListener('resize', () => {
+        clearTimeout(_resizeTimers[canvasId]);
+        _resizeTimers[canvasId] = setTimeout(drawFn, delay || 200);
+    });
+}
+</script>
+<script>
+
+    drawBarChart('proposerChart', [{"label": "de-06", "value": 496.8}, {"label": "de-12", "value": 638.7}, {"label": "de-14", "value": 944.9}, {"label": "de-08", "value": 602.3}, {"label": "de-09", "value": 1072.8}, {"label": "de-17", "value": 370.9}, {"label": "de-17", "value": 904.7}, {"label": "de-15", "value": 1182.8}, {"label": "de-14", "value": 975.4}, {"label": "de-04", "value": 698.5}, {"label": "de-15", "value": 1190.4}, {"label": "de-14", "value": 1019.4}, {"label": "de-06", "value": 961.7}, {"label": "de-20", "value": 258.6}, {"label": "de-03", "value": 907.7}], {
+        title: '出块者涌现分数',
+        barColor: '#FFD700', showValues: false
+    });
+
+    var allBlocks = [{"height": 20, "hash": "0x1c2d80e4bc5b24c8...", "proposer": "HKC-Node-06", "E_i": 496.8, "tx_count": 8, "transactions": [{"hash": "0x71198beb2ff391a7...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 2906.216, "gas": 443383, "status": "失败"}, {"hash": "0x2e347fa3088784dd...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 7895.3304, "gas": 96015, "status": "成功"}, {"hash": "0x798049e70748d428...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 8507.4505, "gas": 477684, "status": "成功"}, {"hash": "0x34720e40d2161dd4...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 7969.1464, "gas": 384295, "status": "成功"}, {"hash": "0xa990008b2cfa3edf...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 1927.4218, "gas": 250445, "status": "失败"}, {"hash": "0xe1f65c734d17735e...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 6443.6404, "gas": 161384, "status": "成功"}, {"hash": "0xd7354f81bead51f2...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 6127.1031, "gas": 290753, "status": "成功"}, {"hash": "0x34989d54fdb981c4...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 2913.6539, "gas": 189577, "status": "成功"}], "gas_used": 7766362, "gas_limit": 8000000, "time": 1700000000}, {"height": 19, "hash": "0xd113dd5f62a50392...", "proposer": "HKC-Node-12", "E_i": 638.7, "tx_count": 2, "transactions": [{"hash": "0xe86cd651888a11b6...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 7884.2308, "gas": 57285, "status": "成功"}, {"hash": "0xb9a990750ed0e44d...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 3162.6167, "gas": 365118, "status": "成功"}], "gas_used": 7242301, "gas_limit": 8000000, "time": 1700000012}, {"height": 18, "hash": "0x6f90bb0644b39446...", "proposer": "HKC-Node-14", "E_i": 944.9, "tx_count": 8, "transactions": [{"hash": "0xdc093f4ea953eda1...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 5284.8386, "gas": 69047, "status": "失败"}, {"hash": "0x85f882b96ad8c892...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 6629.1475, "gas": 160365, "status": "成功"}, {"hash": "0x5992cca647f24c2e...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 3335.7842, "gas": 241560, "status": "成功"}, {"hash": "0x15baf6d5b8a5b752...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 3909.3978, "gas": 474851, "status": "成功"}, {"hash": "0xa0fea072b3ad4be9...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 8914.0176, "gas": 46817, "status": "成功"}, {"hash": "0x0e899da94c62564f...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 435.6035, "gas": 81116, "status": "成功"}, {"hash": "0xbe53acdd12984991...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 5634.0032, "gas": 230449, "status": "成功"}, {"hash": "0x5ee44f486c6d52dc...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 8106.8994, "gas": 458621, "status": "成功"}], "gas_used": 4360474, "gas_limit": 8000000, "time": 1700000024}, {"height": 17, "hash": "0x2c39cb65edb50859...", "proposer": "HKC-Node-08", "E_i": 602.3, "tx_count": 6, "transactions": [{"hash": "0xa102c7f2e9603e95...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 8621.2894, "gas": 464534, "status": "成功"}, {"hash": "0x3208312200fbc2cf...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 3637.2675, "gas": 481572, "status": "成功"}, {"hash": "0x0b8e8d00534715d1...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 859.6425, "gas": 386206, "status": "失败"}, {"hash": "0xe66da8096172fad4...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 7890.173, "gas": 58430, "status": "成功"}, {"hash": "0xd0e0e6eb06633434...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 6226.4154, "gas": 38453, "status": "成功"}, {"hash": "0x7f1b72e0f43dcf63...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 3079.5974, "gas": 259336, "status": "成功"}], "gas_used": 5987316, "gas_limit": 8000000, "time": 1700000036}, {"height": 16, "hash": "0x2e92d37262d83c67...", "proposer": "HKC-Node-09", "E_i": 1072.8, "tx_count": 9, "transactions": [{"hash": "0x56fe344b88075172...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 778.4253, "gas": 468013, "status": "成功"}, {"hash": "0xa36b4150d87d3000...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 3068.0821, "gas": 493858, "status": "成功"}, {"hash": "0xa07c93a3d16b0924...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 4936.5194, "gas": 460461, "status": "成功"}, {"hash": "0xbbe0f06301f72143...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 191.6433, "gas": 271180, "status": "成功"}, {"hash": "0xe6d5baea5ee17b8e...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 7672.2844, "gas": 428737, "status": "成功"}, {"hash": "0xefec9d1d1c44d75d...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 4145.6609, "gas": 248773, "status": "成功"}, {"hash": "0xe2a9c0fd153d7938...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 486.2788, "gas": 281120, "status": "失败"}, {"hash": "0x893bcfbd2da7b875...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 3794.6611, "gas": 67636, "status": "成功"}, {"hash": "0x8acf3997647ec388...", "from": "0x1cb7637b...", "to": "0x99c66b8e...", "amount": 8970.963, "gas": 216358, "status": "成功"}], "gas_used": 4071821, "gas_limit": 8000000, "time": 1700000048}, {"height": 15, "hash": "0xd3a375d73cc1643c...", "proposer": "HKC-Node-17", "E_i": 370.9, "tx_count": 4, "transactions": [{"hash": "0x69f6f383b1713349...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 5155.1076, "gas": 311801, "status": "失败"}, {"hash": "0xf8797367d4abc03f...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 2939.2052, "gas": 141815, "status": "成功"}, {"hash": "0xfa8448a3bff0cd37...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 633.6666, "gas": 155779, "status": "成功"}, {"hash": "0x2c50508dfa47b801...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 8010.0169, "gas": 383749, "status": "成功"}], "gas_used": 3022270, "gas_limit": 8000000, "time": 1700000060}, {"height": 14, "hash": "0xdcac999b671e42b7...", "proposer": "HKC-Node-17", "E_i": 904.7, "tx_count": 6, "transactions": [{"hash": "0x0546f56504dddbc3...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 3223.4108, "gas": 63914, "status": "成功"}, {"hash": "0xc2a4cffbcee7c16b...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 3006.3972, "gas": 305775, "status": "成功"}, {"hash": "0xdb66af6ec2691686...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 2785.0893, "gas": 482733, "status": "成功"}, {"hash": "0x841cb55a2f8ddd97...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 4911.4931, "gas": 82596, "status": "失败"}, {"hash": "0xf695303fd9f8bd6d...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 3510.5533, "gas": 404528, "status": "成功"}, {"hash": "0xace734207e86addc...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 9817.7067, "gas": 379071, "status": "失败"}], "gas_used": 6104828, "gas_limit": 8000000, "time": 1700000072}, {"height": 13, "hash": "0xcfb3ec505718eb60...", "proposer": "HKC-Node-15", "E_i": 1182.8, "tx_count": 9, "transactions": [{"hash": "0x88459baa77537305...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 8488.0521, "gas": 92218, "status": "成功"}, {"hash": "0x755f09b32acc6a7c...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 8257.7437, "gas": 143590, "status": "成功"}, {"hash": "0x2bc9d2679d76297a...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 7705.0495, "gas": 67148, "status": "失败"}, {"hash": "0xdcb3fa20e27f441a...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 1711.287, "gas": 203363, "status": "成功"}, {"hash": "0x6ed6e3a29472c039...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 3931.7901, "gas": 279918, "status": "成功"}, {"hash": "0x73e18fc84b9c442e...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 2880.0976, "gas": 54171, "status": "成功"}, {"hash": "0x2e617208f76d872c...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 2804.4144, "gas": 310499, "status": "成功"}, {"hash": "0x3a6afa534efdc5c6...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 172.49, "gas": 100323, "status": "成功"}, {"hash": "0x8de3d75f7e8dd8bc...", "from": "0x1cb7637b...", "to": "0x99c66b8e...", "amount": 4652.7443, "gas": 455884, "status": "成功"}], "gas_used": 7268593, "gas_limit": 8000000, "time": 1700000084}, {"height": 12, "hash": "0x3710cdd61f5bf069...", "proposer": "HKC-Node-14", "E_i": 975.4, "tx_count": 8, "transactions": [{"hash": "0x3a42effc376f5f50...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 7391.6993, "gas": 357887, "status": "成功"}, {"hash": "0xe3f3754151646753...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 522.7755, "gas": 274365, "status": "成功"}, {"hash": "0xea1a9462fe0ef872...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 4135.0856, "gas": 337055, "status": "成功"}, {"hash": "0xfc4b5e949a4dccd6...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 626.8087, "gas": 38678, "status": "失败"}, {"hash": "0x3c03d0c6b83bcccf...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 6435.6835, "gas": 292455, "status": "成功"}, {"hash": "0xc014bb6cebdfaa3d...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 9223.9413, "gas": 160699, "status": "成功"}, {"hash": "0x8314614a15bec506...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 5728.1849, "gas": 415789, "status": "失败"}, {"hash": "0xe8cd7fb94a2a5cf0...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 2234.8904, "gas": 490819, "status": "成功"}], "gas_used": 4931751, "gas_limit": 8000000, "time": 1700000096}, {"height": 11, "hash": "0x39efe297cbdd0cec...", "proposer": "HKC-Node-04", "E_i": 698.5, "tx_count": 2, "transactions": [{"hash": "0x34853353b256bc5c...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 3514.6435, "gas": 397412, "status": "失败"}, {"hash": "0x8d816af8a03ab02d...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 3994.5183, "gas": 395800, "status": "成功"}], "gas_used": 7493620, "gas_limit": 8000000, "time": 1700000108}, {"height": 10, "hash": "0x41d72c182b3a5d00...", "proposer": "HKC-Node-15", "E_i": 1190.4, "tx_count": 1, "transactions": [{"hash": "0xbbe75fdb43f02031...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 6255.7333, "gas": 261836, "status": "成功"}], "gas_used": 2088076, "gas_limit": 8000000, "time": 1700000120}, {"height": 9, "hash": "0x2d2431a60f8756d5...", "proposer": "HKC-Node-14", "E_i": 1019.4, "tx_count": 3, "transactions": [{"hash": "0x8142f5f97cbe1106...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 3923.7794, "gas": 267356, "status": "成功"}, {"hash": "0xce396b94fd9096a2...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 1366.3332, "gas": 56622, "status": "成功"}, {"hash": "0x407ecc3a462b56a6...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 5162.4843, "gas": 409597, "status": "成功"}], "gas_used": 7368307, "gas_limit": 8000000, "time": 1700000132}, {"height": 8, "hash": "0xbd8f947dafe59259...", "proposer": "HKC-Node-06", "E_i": 961.7, "tx_count": 4, "transactions": [{"hash": "0x087910204daf50df...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 5712.0413, "gas": 68630, "status": "成功"}, {"hash": "0x302f2e1f1b10fe50...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 4443.9889, "gas": 256210, "status": "成功"}, {"hash": "0xcca2d975041ed206...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 1213.115, "gas": 321858, "status": "成功"}, {"hash": "0xd6a330d0415928bd...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 7081.6042, "gas": 328852, "status": "失败"}], "gas_used": 3972336, "gas_limit": 8000000, "time": 1700000144}, {"height": 7, "hash": "0x838b0f55e4c592ef...", "proposer": "HKC-Node-20", "E_i": 258.6, "tx_count": 9, "transactions": [{"hash": "0xfc902e2b529e1159...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 548.8045, "gas": 227094, "status": "成功"}, {"hash": "0x9947735e75fa590b...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 5554.9142, "gas": 354806, "status": "成功"}, {"hash": "0x275e91c785da0fdf...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 7156.2763, "gas": 27433, "status": "成功"}, {"hash": "0xcd99823f125dd2a3...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 2419.9764, "gas": 382152, "status": "成功"}, {"hash": "0x753d126014388db8...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 1942.2106, "gas": 280573, "status": "成功"}, {"hash": "0xa74e3bb8af024aa1...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 2738.9209, "gas": 425254, "status": "失败"}, {"hash": "0x973f0a85d14a073f...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 7380.7098, "gas": 459794, "status": "成功"}, {"hash": "0xfb15a0e8dc17bf2b...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 3101.2259, "gas": 211530, "status": "成功"}, {"hash": "0x75cba31651c6de4c...", "from": "0x1cb7637b...", "to": "0x99c66b8e...", "amount": 6241.0509, "gas": 234744, "status": "成功"}], "gas_used": 4667273, "gas_limit": 8000000, "time": 1700000156}, {"height": 6, "hash": "0x9eb198adecc675f7...", "proposer": "HKC-Node-03", "E_i": 907.7, "tx_count": 6, "transactions": [{"hash": "0x0edb5d91876561b3...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 2855.1617, "gas": 289224, "status": "成功"}, {"hash": "0x969b5a7002ac14b3...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 4077.0981, "gas": 390863, "status": "成功"}, {"hash": "0x3bc87536ac732129...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 5350.7547, "gas": 241339, "status": "失败"}, {"hash": "0x3cb644c9b51e547c...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 1460.3893, "gas": 187344, "status": "失败"}, {"hash": "0xad805f35af238726...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 509.519, "gas": 461339, "status": "成功"}, {"hash": "0xa0350b5e7c12f153...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 8003.7586, "gas": 36633, "status": "成功"}], "gas_used": 5196270, "gas_limit": 8000000, "time": 1700000168}, {"height": 5, "hash": "0xcb17fdcf44b46e08...", "proposer": "HKC-Node-08", "E_i": 507.0, "tx_count": 3, "transactions": [{"hash": "0xeb7367a0457f8f5d...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 2813.4954, "gas": 491898, "status": "成功"}, {"hash": "0x4adeec76435e091a...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 5593.3485, "gas": 87386, "status": "失败"}, {"hash": "0x9a9e2624b2af263f...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 7757.2799, "gas": 191780, "status": "成功"}], "gas_used": 3774974, "gas_limit": 8000000, "time": 1700000180}, {"height": 4, "hash": "0x064f8330578d84d6...", "proposer": "HKC-Node-20", "E_i": 1073.8, "tx_count": 10, "transactions": [{"hash": "0x4b2347deaabffdac...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 7273.0636, "gas": 494929, "status": "失败"}, {"hash": "0xf84b0e89b59b43b8...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 5024.7052, "gas": 462781, "status": "成功"}, {"hash": "0x4414255a265a204f...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 1293.3928, "gas": 124670, "status": "成功"}, {"hash": "0x0b879d3373bd67b8...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 673.7712, "gas": 208987, "status": "成功"}, {"hash": "0xafab36c1eef6e35b...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 5880.661, "gas": 21364, "status": "失败"}, {"hash": "0x780e53ad7fa9b81f...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 1780.0396, "gas": 437948, "status": "失败"}, {"hash": "0x7715000f6163f623...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 8371.0025, "gas": 125513, "status": "成功"}, {"hash": "0x0217fc152c07d883...", "from": "0x13d28fed...", "to": "0xdbb7b294...", "amount": 5485.466, "gas": 280218, "status": "成功"}, {"hash": "0xe4169c2295403e0b...", "from": "0x1cb7637b...", "to": "0x99c66b8e...", "amount": 6152.3617, "gas": 385458, "status": "失败"}, {"hash": "0x53da89f1b810c737...", "from": "0xe72d310d...", "to": "0x794d9d1a...", "amount": 7340.2524, "gas": 300481, "status": "成功"}], "gas_used": 1374030, "gas_limit": 8000000, "time": 1700000192}, {"height": 3, "hash": "0x8f1e4ca0197f18c6...", "proposer": "HKC-Node-05", "E_i": 1192.2, "tx_count": 7, "transactions": [{"hash": "0xab199cfee6eee2ce...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 7317.9124, "gas": 27661, "status": "成功"}, {"hash": "0x5f2c820042ce0c63...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 9497.4326, "gas": 40564, "status": "失败"}, {"hash": "0x2a3ccf98322d77c2...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 3685.2655, "gas": 495558, "status": "成功"}, {"hash": "0x3efe959161c7fdad...", "from": "0x41242b9f...", "to": "0xe49d63b2...", "amount": 3780.7672, "gas": 424529, "status": "失败"}, {"hash": "0xf922ef5d960a6602...", "from": "0x5b840157...", "to": "0xa2ec8ada...", "amount": 9738.8654, "gas": 113315, "status": "成功"}, {"hash": "0x6283fdbd93e7e231...", "from": "0x3b96fc06...", "to": "0x5eb242ae...", "amount": 7759.2694, "gas": 79187, "status": "失败"}, {"hash": "0x4f449b4d68e0cf6c...", "from": "0x71e76909...", "to": "0x25f1c790...", "amount": 5743.1435, "gas": 357007, "status": "成功"}], "gas_used": 5953210, "gas_limit": 8000000, "time": 1700000204}, {"height": 2, "hash": "0xf11319d99df3196d...", "proposer": "HKC-Node-14", "E_i": 826.4, "tx_count": 3, "transactions": [{"hash": "0x27ef2eaa77544d2d...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 4222.1503, "gas": 136466, "status": "成功"}, {"hash": "0x8a0dbd63074bebdc...", "from": "0xe8bc163c...", "to": "0x82f3e9c6...", "amount": 9767.2801, "gas": 324710, "status": "成功"}, {"hash": "0xc68a305956cd7488...", "from": "0xad328846...", "to": "0xdb77fd01...", "amount": 8070.3102, "gas": 25448, "status": "成功"}], "gas_used": 4591812, "gas_limit": 8000000, "time": 1700000216}, {"height": 1, "hash": "0x887152c7800bcbf0...", "proposer": "HKC-Node-15", "E_i": 259.0, "tx_count": 1, "transactions": [{"hash": "0x3ebc2bd1d73e4f2f...", "from": "0xec18eac8...", "to": "0xdd191696...", "amount": 5978.1053, "gas": 290434, "status": "成功"}], "gas_used": 436434, "gas_limit": 8000000, "time": 1700000228}];
+
+    function doSearch() {
+        var q = document.getElementById('searchInput').value.trim();
+        if (!q) return;
+        var found = allBlocks.find(function(b) { return b.height == q || b.hash.startsWith(q); });
+        if (found) showBlock(found.height);
+        else alert('未找到匹配的区块或交易: ' + q);
+    }
+
+    function showBlock(height) {
+        var b = allBlocks.find(function(bl) { return bl.height === height; });
+        if (!b) return;
+        var el = document.getElementById('blockDetail');
+        var content = document.getElementById('blockDetailContent');
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">';
+        html += '<div><span style="color:#8899AA">区块高度:</span> <b>' + b.height + '</b></div>';
+        html += '<div><span style="color:#8899AA">哈希:</span> <code>' + b.hash + '</code></div>';
+        html += '<div><span style="color:#8899AA">出块者:</span> ' + b.proposer + '</div>';
+        html += '<div><span style="color:#8899AA">涌现分数:</span> <span style="color:#FFD700">' + b.E_i + '</span></div>';
+        html += '<div><span style="color:#8899AA">交易数:</span> ' + b.tx_count + '</div>';
+        html += '<div><span style="color:#8899AA">Gas:</span> ' + (b.gas_used*100/b.gas_limit).toFixed(1) + '%</div>';
+        html += '</div>';
+        html += '<table class="hkc-table"><thead><tr><th>交易哈希</th><th>发送</th><th>接收</th><th>金额</th><th>Gas</th><th>状态</th></tr></thead><tbody>';
+        b.transactions.forEach(function(tx) {
+            html += '<tr><td style="font-family:monospace;font-size:11px">' + tx.hash + '</td>';
+            html += '<td style="font-family:monospace;font-size:11px">' + tx.from + '</td>';
+            html += '<td style="font-family:monospace;font-size:11px">' + tx.to + '</td>';
+            html += '<td>' + tx.amount + '</td><td>' + tx.gas + '</td>';
+            html += '<td><span class="badge ' + (tx.status==='成功'?'badge-green':'badge-red') + '">' + tx.status + '</span></td></tr>';
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+        el.style.display = 'block';
+        el.scrollIntoView({behavior:'smooth'});
+    }
+
+    setupTableSort('blockTable');
+    setupTableSort('addrTable');
+    
+</script>
+</body></html>

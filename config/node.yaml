@@ -1,0 +1,36 @@
+# Hongkun AI Chain — 节点配置
+# 每个节点独立配置
+
+节点:
+  名称: "hkc-node-1"
+  数据目录: "~/.hkc/data"
+  日志级别: "INFO"    # DEBUG/INFO/WARN/ERROR
+
+网络:
+  P2P端口: 8845
+  RPC端口: 8843
+  WS端口: 8844
+  外部IP: "auto"       # auto=自动检测
+  种子节点:
+    - "hkc://seed1.hongkun.ai:8845"
+    - "hkc://seed2.hongkun.ai:8845"
+
+共识:
+  质押金额: 1000       # HKAIC
+  自动参与共识: true
+  涌现分数阈值: 0.0     # 0=不限制
+
+AI:
+  诊断: true
+  自动优化: true
+  预测同步: true
+  语义查询: true
+  自适应参数: true
+
+安全:
+  TLS: true
+  白名单模式: false
+  最大连接: 50
+  限流_每分钟: 100
+  DDoS防护: true
+  协同净化: true
