@@ -8,6 +8,20 @@ import {
   Zap,
   Compass,
   Cog,
+  Radio,
+  Cpu,
+  Wifi,
+  AlertTriangle,
+  CheckCircle2,
+  Settings2,
+  Sparkles,
+  Activity,
+  LineChart,
+  Target,
+  Wrench,
+  MapPin,
+  Battery,
+  Gauge,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -42,6 +56,76 @@ const features = [
     title: "Copilot Mode",
     description: "AI assistant guides you through troubleshooting and optimization.",
   },
+  {
+    icon: Radio,
+    title: "Real Drone Control",
+    description: "Connect and control real drones with MAVSDK integration.",
+  },
+  {
+    icon: Cpu,
+    title: "PID Optimization",
+    description: "Advanced PID tuning analysis with automated recommendations.",
+  },
+  {
+    icon: Wifi,
+    title: "MAVSDK Integration",
+    description: "Seamless connection with PX4 and MAVLink-compatible systems.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Anomaly Detection",
+    description: "AI-powered detection of motor anomalies and unusual patterns.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "Quality Assurance",
+    description: "Comprehensive quality checks ensure flight readiness.",
+  },
+  {
+    icon: Settings2,
+    title: "Configuration Management",
+    description: "Easy setup and management of drone parameters.",
+  },
+  {
+    icon: Sparkles,
+    title: "Smart Insights",
+    description: "Intelligent recommendations powered by GPT-4.",
+  },
+  {
+    icon: Activity,
+    title: "Flight Monitoring",
+    description: "Real-time telemetry and flight status monitoring.",
+  },
+  {
+    icon: LineChart,
+    title: "Data Visualization",
+    description: "Beautiful charts and graphs for performance analysis.",
+  },
+  {
+    icon: Target,
+    title: "Precision Tracking",
+    description: "GPS drift detection with centimeter-level accuracy.",
+  },
+  {
+    icon: Wrench,
+    title: "Maintenance Alerts",
+    description: "Proactive maintenance recommendations based on flight data.",
+  },
+  {
+    icon: MapPin,
+    title: "GPS Analysis",
+    description: "Comprehensive GPS data analysis and drift detection.",
+  },
+  {
+    icon: Battery,
+    title: "Battery Health",
+    description: "Monitor battery performance and health metrics.",
+  },
+  {
+    icon: Gauge,
+    title: "Motor Performance",
+    description: "Real-time motor efficiency and temperature monitoring.",
+  },
 ];
 
 const Features = () => {
@@ -63,7 +147,7 @@ const Features = () => {
           </p>
         </motion.div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, idx) => {
             const Icon = feature.icon;
             return (
@@ -72,17 +156,17 @@ const Features = () => {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                transition={{ duration: 0.5, delay: idx * 0.05 }}
               >
-                <Card className="h-full group">
+                <Card className="h-full group hover:border-primary/50 transition-all duration-300">
                   <CardHeader>
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4 group-hover:btn-glow transition-all">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4 group-hover:btn-glow transition-all duration-300">
                       <Icon className="w-6 h-6 text-primary" />
                     </div>
-                    <CardTitle>{feature.title}</CardTitle>
+                    <CardTitle className="text-lg">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-text-secondary">
+                    <p className="text-text-secondary text-sm">
                       {feature.description}
                     </p>
                   </CardContent>
