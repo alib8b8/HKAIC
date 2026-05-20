@@ -21,6 +21,11 @@ MAX_TAKEOFF_ALTITUDE = 120  # 最大起飞高度（米）
 MIN_TAKEOFF_ALTITUDE = 0.5  # 最小起飞高度（米）
 MAX_GOTO_ALTITUDE = 120  # 最大航点高度（米）
 
+# 连接限制配置
+MAX_CONNECTIONS_PER_USER = 5  # 每个用户最大连接数
+MAX_TOTAL_CONNECTIONS = 100  # 全局最大连接数
+CONNECTION_TIMEOUT = 30.0  # 连接超时时间（秒）
+
 
 class DroneConnectionStatus(Enum):
     DISCONNECTED = "disconnected"
@@ -75,9 +80,10 @@ class DroneTelemetry:
 
 class DroneConnection:
     """Represents a single drone connection"""
-    def __init__(self, drone_id: str, connection_uri: str):
+    def __init__(self, drone_id: str, connection_uri: str, owner_id: Optional[int] = None):
         self.drone_id = drone_id
         self.connection_uri = connection_uri
+        self.owner_id = owner_id  # 添加所有者ID，用于权限控制
         self.status = DroneConnectionStatus.DISCONNECTED
         self.telemetry = DroneTelemetry()
         self.created_at = datetime.now()
@@ -100,7 +106,8 @@ class DroneManager:
     async def connect_drone(
         self, 
         drone_id: str, 
-        connection_uri: str = "udp://:14540"
+        connection_uri: str = "udp://:14540",
+        user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Connect to a drone
@@ -108,10 +115,12 @@ class DroneManager:
         Args:
             drone_id: Unique identifier for the drone
             connection_uri: MAVLink connection URI (e.g., "udp://:14540", "serial:///dev/ttyUSB0")
+            user_id: ID of the user making the connection
         
         Returns:
             Connection status information
         """
+        # 验证无人机ID格式
         drone_id_validation = validate_drone_id(drone_id)
         if not drone_id_validation["valid"]:
             return {
@@ -120,6 +129,7 @@ class DroneManager:
                 "status": "validation_failed"
             }
         
+        # 验证连接URI格式
         uri_validation = validate_connection_uri(connection_uri)
         if not uri_validation["valid"]:
             return {
@@ -129,21 +139,47 @@ class DroneManager:
             }
         
         async with self._lock:
+            # 检查全局连接数限制
+            if len(self._connections) >= MAX_TOTAL_CONNECTIONS:
+                return {
+                    "success": False,
+                    "message": f"Maximum total connections reached ({MAX_TOTAL_CONNECTIONS}). Please try again later.",
+                    "status": "limit_reached"
+                }
+            
+            # 检查单个用户的连接数限制
+            if user_id is not None:
+                user_connections = sum(1 for conn in self._connections.values() if conn.owner_id == user_id)
+                if user_connections >= MAX_CONNECTIONS_PER_USER:
+                    return {
+                        "success": False,
+                        "message": f"Maximum connections per user reached ({MAX_CONNECTIONS_PER_USER}). Please disconnect some drones first.",
+                        "status": "limit_reached"
+                    }
+            
+            # 如果无人机已存在且已连接
             if drone_id in self._connections:
                 existing = self._connections[drone_id]
                 if existing.status == DroneConnectionStatus.CONNECTED:
+                    # 检查所有权
+                    if user_id is not None and existing.owner_id != user_id:
+                        return {
+                            "success": False,
+                            "message": "This drone is already connected by another user",
+                            "status": "permission_denied"
+                        }
                     return {
                         "success": True,
                         "message": f"Drone {drone_id} already connected",
                         "status": existing.status.value
                     }
             
-            # Create new connection
-            connection = DroneConnection(drone_id, connection_uri)
+            # 创建新连接
+            connection = DroneConnection(drone_id, connection_uri, owner_id=user_id)
             self._connections[drone_id] = connection
             connection.status = DroneConnectionStatus.CONNECTING
             
-            logger.info(f"Connecting to drone {drone_id} at {connection_uri}")
+            logger.info(f"Connecting to drone {drone_id} at {connection_uri} for user {user_id}")
             
             try:
                 # Try to import MAVSDK
@@ -153,26 +189,47 @@ class DroneManager:
                 drone = System()
                 connection._drone_system = drone
                 
-                # Connect to drone
-                await drone.connect(system_address=connection_uri)
+                # Connect to drone with timeout
+                connection_task = asyncio.create_task(
+                    drone.connect(system_address=connection_uri)
+                )
                 
-                # Wait for discovery
-                logger.info(f"Waiting for drone {drone_id} to be discovered...")
-                async for state in drone.core.connection_state():
-                    if state.is_connected:
-                        logger.info(f"Drone {drone_id} connected successfully!")
-                        connection.status = DroneConnectionStatus.CONNECTED
-                        connection.last_connection_time = datetime.now()
-                        
-                        # Start telemetry monitoring
-                        self._start_telemetry_monitoring(connection)
-                        
-                        return {
-                            "success": True,
-                            "message": f"Connected to drone {drone_id}",
-                            "status": connection.status.value,
-                            "connection_uri": connection_uri
-                        }
+                try:
+                    # Wait for connection with timeout
+                    await asyncio.wait_for(
+                        self._wait_for_connection(drone),
+                        timeout=CONNECTION_TIMEOUT
+                    )
+                    
+                    logger.info(f"Drone {drone_id} connected successfully!")
+                    connection.status = DroneConnectionStatus.CONNECTED
+                    connection.last_connection_time = datetime.now()
+                    
+                    # Start telemetry monitoring
+                    self._start_telemetry_monitoring(connection)
+                    
+                    return {
+                        "success": True,
+                        "message": f"Connected to drone {drone_id}",
+                        "status": connection.status.value,
+                        "connection_uri": connection_uri
+                    }
+                    
+                except asyncio.TimeoutError:
+                    # Connection timeout
+                    logger.error(f"Connection to drone {drone_id} timed out after {CONNECTION_TIMEOUT}s")
+                    connection.status = DroneConnectionStatus.ERROR
+                    # Cleanup
+                    connection_task.cancel()
+                    try:
+                        await connection_task
+                    except:
+                        pass
+                    return {
+                        "success": False,
+                        "message": f"Connection timed out after {CONNECTION_TIMEOUT} seconds",
+                        "status": "timeout"
+                    }
                         
             except ImportError:
                 logger.warning("⚠️ MAVSDK not installed, using simulated connection")
@@ -288,6 +345,12 @@ class DroneManager:
                 "success": True,
                 "message": f"Disconnected from drone {drone_id}"
             }
+    
+    async def _wait_for_connection(self, drone):
+        """等待无人机连接"""
+        async for state in drone.core.connection_state():
+            if state.is_connected:
+                return True
     
     async def get_drone_status(self, drone_id: str) -> Optional[Dict[str, Any]]:
         """Get current status of a drone"""
@@ -548,6 +611,75 @@ class DroneManager:
                     "success": False,
                     "message": f"Position command failed: {str(e)}"
                 }
+    
+    async def emergency_land(self, drone_id: str) -> Dict[str, Any]:
+        """
+        紧急降落 - 立即降落无人机（不等待正常流程）
+        用于紧急情况
+        """
+        async with self._lock:
+            if drone_id not in self._connections:
+                return {"success": False, "message": "Drone not found"}
+            
+            connection = self._connections[drone_id]
+            
+            try:
+                logger.critical(f"EMERGENCY LAND: Drone {drone_id}")
+                
+                if connection._drone_system:
+                    # 立即发送降落命令
+                    await connection._drone_system.action.land()
+                
+                connection.telemetry.in_air = False
+                connection.telemetry.armed = False
+                
+                return {
+                    "success": True,
+                    "message": f"Emergency land command sent to drone {drone_id}"
+                }
+            except Exception as e:
+                logger.error(f"Emergency land failed for drone {drone_id}: {str(e)}")
+                return {
+                    "success": False,
+                    "message": f"Emergency land failed: {str(e)}"
+                }
+    
+    async def emergency_stop_all(self) -> Dict[str, Any]:
+        """
+        紧急停止所有无人机
+        用于紧急情况，立即降落所有无人机
+        """
+        results = []
+        
+        for drone_id in list(self._connections.keys()):
+            result = await self.emergency_land(drone_id)
+            results.append({
+                "drone_id": drone_id,
+                "result": result
+            })
+        
+        logger.critical(f"EMERGENCY STOP ALL: Stopped {len(results)} drones")
+        
+        return {
+            "success": True,
+            "message": f"Emergency stop executed for {len(results)} drones",
+            "results": results
+        }
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """获取无人机管理统计信息"""
+        total_connections = len(self._connections)
+        connected_count = sum(
+            1 for conn in self._connections.values() 
+            if conn.status == DroneConnectionStatus.CONNECTED
+        )
+        
+        return {
+            "total_connections": total_connections,
+            "connected_count": connected_count,
+            "max_connections": MAX_TOTAL_CONNECTIONS,
+            "connections": self.list_drones()
+        }
 
 
 # Singleton instance

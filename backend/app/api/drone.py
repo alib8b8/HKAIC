@@ -3,7 +3,8 @@ HKAIC SaaS - Drone Control API
 RESTful API endpoints for drone connection and control
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 import logging
@@ -23,17 +24,28 @@ from app.schemas import (
 from app.auth import get_current_user
 from app.models import User
 from app.drone_manager import drone_manager, DroneConnectionStatus
+from app.audit_logger import log_drone_action
+from app.main import limiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/drone", tags=["Drone Control"])
 
 
+def get_client_ip(request: Request) -> str:
+    """获取客户端IP地址"""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/connect", response_model=DroneActionResponse, status_code=status.HTTP_200_OK)
 async def connect_to_drone(
-    request: DroneConnectRequest,
+    request_body: DroneConnectRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     Connect to a drone
@@ -43,12 +55,25 @@ async def connect_to_drone(
     
     Requires authentication
     """
-    logger.info(f"User {current_user.id} connecting to drone {request.drone_id}")
+    ip_address = get_client_ip(request) if request else "unknown"
+    logger.info(f"User {current_user.id} connecting to drone {request_body.drone_id}")
     
     try:
         result = await drone_manager.connect_drone(
-            drone_id=request.drone_id,
-            connection_uri=request.connection_uri
+            drone_id=request_body.drone_id,
+            connection_uri=request_body.connection_uri,
+            user_id=current_user.id
+        )
+        
+        # 记录审计日志
+        log_result = "success" if result.get("success", False) else "failure"
+        log_drone_action(
+            action="connect",
+            user_id=current_user.id,
+            drone_id=request_body.drone_id,
+            result=log_result,
+            details=result,
+            ip_address=ip_address
         )
         
         if not result.get("success", False):
@@ -57,6 +82,8 @@ async def connect_to_drone(
                 status_code = status.HTTP_400_BAD_REQUEST
             elif result.get("status") == "error":
                 status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            elif result.get("status") == "limit_reached":
+                status_code = status.HTTP_429_TOO_MANY_REQUESTS
             
             raise HTTPException(
                 status_code=status_code,
@@ -186,19 +213,36 @@ async def get_drone_status(
 
 
 @router.post("/arm", response_model=DroneActionResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")  # 每分钟最多10次
 async def arm_drone(
-    request: DroneActionRequest,
-    current_user: User = Depends(get_current_user)
+    request_body: DroneActionRequest,
+    current_user: User = Depends(get_current_user),
+    request: Request = None
 ):
     """
     Arm the drone
     
+    ⚠️ SAFETY WARNING: This sends actual flight commands to a real drone.
+    Ensure proper safety measures are in place before use.
+    
     Requires authentication
     """
-    logger.info(f"User {current_user.id} arming drone {request.drone_id}")
+    ip_address = get_client_ip(request) if request else "unknown"
+    logger.info(f"User {current_user.id} arming drone {request_body.drone_id}")
     
     try:
-        result = await drone_manager.arm_drone(request.drone_id)
+        result = await drone_manager.arm_drone(request_body.drone_id)
+        
+        # 记录审计日志
+        log_result = "success" if result.get("success", False) else "failure"
+        log_drone_action(
+            action="arm",
+            user_id=current_user.id,
+            drone_id=request_body.drone_id,
+            result=log_result,
+            details=result,
+            ip_address=ip_address
+        )
         
         return DroneActionResponse(
             success=result.get("success", False),
@@ -242,6 +286,7 @@ async def disarm_drone(
 
 
 @router.post("/takeoff", response_model=DroneActionResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")  # 每分钟最多10次
 async def takeoff_drone(
     request: DroneTakeoffRequest,
     current_user: User = Depends(get_current_user)
@@ -350,9 +395,11 @@ async def return_to_home(
 
 
 @router.post("/goto", response_model=DroneActionResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("20/minute")  # 每分钟最多20次
 async def goto_position(
-    request: DronePositionRequest,
-    current_user: User = Depends(get_current_user)
+    request_body: DronePositionRequest,
+    current_user: User = Depends(get_current_user),
+    request: Request = None
 ):
     """
     Send position control command to drone
@@ -362,14 +409,31 @@ async def goto_position(
     
     Requires authentication
     """
-    logger.info(f"User {current_user.id} sending position command to drone {request.drone_id}")
+    ip_address = get_client_ip(request) if request else "unknown"
+    logger.info(f"User {current_user.id} sending position command to drone {request_body.drone_id}")
     
     try:
         result = await drone_manager.set_position(
-            request.drone_id,
-            request.latitude,
-            request.longitude,
-            request.altitude
+            request_body.drone_id,
+            request_body.latitude,
+            request_body.longitude,
+            request_body.altitude
+        )
+        
+        # 记录审计日志
+        log_result = "success" if result.get("success", False) else "failure"
+        log_drone_action(
+            action="goto",
+            user_id=current_user.id,
+            drone_id=request_body.drone_id,
+            result=log_result,
+            details={
+                "latitude": request_body.latitude,
+                "longitude": request_body.longitude,
+                "altitude": request_body.altitude,
+                **result
+            },
+            ip_address=ip_address
         )
         
         if not result.get("success", False):
@@ -398,4 +462,67 @@ async def goto_position(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Position command failed. Please try again."
+        )
+
+
+@router.post("/emergency-stop", response_model=DroneActionResponse, status_code=status.HTTP_200_OK)
+async def emergency_stop_all(
+    current_user: User = Depends(get_current_user),
+    request: Request = None
+):
+    """
+    🚨 EMERGENCY STOP - Land all drones immediately
+    
+    ⚠️ CRITICAL SAFETY COMMAND: This will immediately land ALL connected drones.
+    Use only in emergency situations!
+    
+    Requires authentication
+    """
+    ip_address = get_client_ip(request) if request else "unknown"
+    logger.critical(f"EMERGENCY STOP triggered by user {current_user.id} from {ip_address}")
+    
+    try:
+        result = await drone_manager.emergency_stop_all()
+        
+        # 记录紧急操作的审计日志
+        for drone_result in result.get("results", []):
+            log_drone_action(
+                action="emergency_stop",
+                user_id=current_user.id,
+                drone_id=drone_result["drone_id"],
+                result="success" if drone_result["result"].get("success") else "failure",
+                details=drone_result["result"],
+                ip_address=ip_address
+            )
+        
+        return DroneActionResponse(
+            success=result.get("success", False),
+            message=result.get("message", ""),
+            details=result
+        )
+    except Exception as e:
+        logger.error(f"Emergency stop failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Emergency stop failed. Please try again."
+        )
+
+
+@router.get("/statistics", status_code=status.HTTP_200_OK)
+async def get_drone_statistics(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get drone connection statistics
+    
+    Requires authentication
+    """
+    try:
+        stats = drone_manager.get_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve statistics"
         )
