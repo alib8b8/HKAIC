@@ -43,6 +43,8 @@ class User(Base):
     # Relationships
     flight_logs = relationship("FlightLog", back_populates="user", cascade="all, delete-orphan")
     analyses = relationship("FlightAnalysis", back_populates="user", cascade="all, delete-orphan")
+    tuning_backups = relationship("TuningBackup", back_populates="user", cascade="all, delete-orphan")
+    tuning_sessions = relationship("TuningSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class FlightLog(Base):
@@ -145,6 +147,58 @@ class SubscriptionPlan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class TuningBackup(Base):
+    """User tuning parameter backups"""
+    __tablename__ = "tuning_backups"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Backup metadata
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    
+    # Tuning data (JSON format)
+    params = Column(JSON, nullable=False)
+    presets = Column(JSON, nullable=True)
+    
+    # Metadata
+    drone_model = Column(String, nullable=True)
+    firmware_version = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="tuning_backups")
+    sessions = relationship("TuningSession", back_populates="backup")
+
+
+class TuningSession(Base):
+    """Individual tuning sessions"""
+    __tablename__ = "tuning_sessions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    backup_id = Column(Integer, ForeignKey("tuning_backups.id"), nullable=True)
+    
+    # Session data
+    session_type = Column(String, default="adjustment")  # adjustment, preset, analysis
+    
+    # Snapshots
+    snapshots = Column(JSON, nullable=True)
+    
+    # Conversations
+    conversations = Column(JSON, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="tuning_sessions")
+    backup = relationship("TuningBackup", back_populates="sessions")
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -231,6 +285,8 @@ __all__ = [
     'FlightLog',
     'FlightAnalysis',
     'SubscriptionPlan',
+    'TuningBackup',
+    'TuningSession',
     'Base',
     'engine',
     'SessionLocal',

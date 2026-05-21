@@ -1,8 +1,8 @@
-const Footer = () => {
+export default function Footer() {
   return (
     <footer className="border-t border-gray-800 bg-gray-900/50 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
@@ -13,7 +13,7 @@ const Footer = () => {
               </span>
             </div>
             <p className="text-gray-400 text-sm mb-4 max-w-sm">
-              AI-powered flight intelligence platform for drone enthusiasts and professionals.
+              AI-powered drone flight intelligence platform
             </p>
           </div>
           
@@ -36,12 +36,10 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm">
-          <p>© 2024 HKAIC. All rights reserved.</p>
+        <div className="border-t border-gray-800 pt-8 text-center text-gray-500 text-sm">
+          <p>© 2026 HKAIC. All rights reserved.</p>
         </div>
       </div>
     </footer>
   );
-};
-
-export { Footer };
+}

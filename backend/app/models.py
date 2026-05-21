@@ -9,6 +9,8 @@ from app.database import (
     FlightLog,
     FlightAnalysis,
     SubscriptionPlan,
+    TuningBackup,
+    TuningSession,
     Base
 )
 
@@ -17,5 +19,7 @@ __all__ = [
     'FlightLog',
     'FlightAnalysis',
     'SubscriptionPlan',
+    'TuningBackup',
+    'TuningSession',
     'Base'
 ]

@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Drone } from "lucide-react";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Drone } from 'lucide-react';
 
-const Navbar = () => {
+export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -26,6 +26,9 @@ const Navbar = () => {
             <Link href="/upload" className="text-gray-400 hover:text-white transition">
               Upload
             </Link>
+            <Link href="/pricing" className="text-gray-400 hover:text-white transition">
+              Pricing
+            </Link>
           </div>
           
           <div className="flex items-center gap-3">
@@ -36,6 +39,4 @@ const Navbar = () => {
       </div>
     </nav>
   );
-};
-
-export { Navbar };
+}

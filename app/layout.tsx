@@ -1,10 +1,5 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "HKAIC - AI Drone Flight Intelligence Platform",
-  description: "HKAIC is a modern AI-powered SaaS platform for drone flight intelligence.",
-};
+import './globals.css';
+import { AuthProvider } from './lib/auth-context';
 
 export default function RootLayout({
   children,
@@ -12,8 +7,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="zh">
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

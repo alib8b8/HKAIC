@@ -1,4 +1,4 @@
-# HKAIC - AI 无人机调参助手
+# HKAIC - AI Drone Tuning Assistant
 
 ---
 
